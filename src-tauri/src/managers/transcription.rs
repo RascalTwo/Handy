@@ -16,7 +16,7 @@ use crate::managers::audio::{create_smoothed_detector, AudioRecordingManager};
 use crate::managers::model::ModelManager;
 use crate::settings::{
     get_settings, AppSettings, ChineseScript, ModelUnloadTimeout, TranscribeAcceleratorSetting,
-    PasteMethod, PasteTiming,
+    PasteMethod,
 };
 use anyhow::Result;
 use chunked::{ChunkSetup, ChunkedDecode};
@@ -277,9 +277,13 @@ pub struct TranscriptionManager {
     /// Handy's spoken-language detector, loaded in this process on first
     /// use and unloaded with the model.
     language_detector: Arc<LanguageDetector>,
+    /// Whether the in-flight utterance was started by the live-paste binding.
+    /// Set once per utterance by `begin_utterance` so the stream worker never
+    /// has to consult settings mid-stream.
+    live_utterance: Arc<AtomicBool>,
     /// Post-filtered committed text already typed into the focused app by the
-    /// live-injection path. Empty unless `paste_timing` is `Live`. Reset per
-    /// stream; read at finalize so only the untyped remainder is pasted.
+    /// live-injection path. Empty unless this utterance is live. Reset per
+    /// utterance; read at finalize so only the untyped remainder is pasted.
     live_typed: Arc<Mutex<String>>,
 }
 
@@ -298,6 +302,7 @@ impl TranscriptionManager {
             reload_model_on_next_use: Arc::new(AtomicBool::new(false)),
             router: Arc::new(StreamRouter::new()),
             stream_active: Arc::new(AtomicBool::new(false)),
+            live_utterance: Arc::new(AtomicBool::new(false)),
             live_typed: Arc::new(Mutex::new(String::new())),
             next_stream_worker_id: Arc::new(AtomicU64::new(1)),
             active_stream_worker: Arc::new(AtomicU64::new(0)),
@@ -936,14 +941,16 @@ impl TranscriptionManager {
             .unwrap_or_default()
     }
 
-    /// Forget any live-injection progress, so the next utterance starts from zero.
+    /// Start a new utterance. `live` comes from the binding that triggered it —
+    /// the dedicated live-paste shortcut — not from a setting.
     ///
-    /// Must be called on *every* utterance, not just streaming ones. Otherwise a
-    /// streaming utterance's typed text outlives it, and the next non-streaming
-    /// utterance — a model switch, or a model whose capability isn't known yet —
-    /// would have its final paste measured against text from the previous one,
-    /// match nothing, and paste nothing at all.
-    pub fn reset_live_typed(&self) {
+    /// Must be called for *every* utterance, not just streaming ones. Otherwise
+    /// a streaming utterance's typed text outlives it, and the next
+    /// non-streaming utterance — a model switch, or a model whose capability
+    /// isn't known yet — would have its final paste measured against text from
+    /// the previous one, match nothing, and paste nothing at all.
+    pub fn begin_utterance(&self, live: bool) {
+        self.live_utterance.store(live, Ordering::Release);
         if let Ok(mut typed) = self.live_typed.lock() {
             typed.clear();
         }
@@ -951,9 +958,11 @@ impl TranscriptionManager {
 
     /// Type newly committed words into the focused app mid-recording.
     fn inject_live_delta(&self, committed: &str) {
+        if !self.live_utterance.load(Ordering::Acquire) {
+            return;
+        }
         let settings = get_settings(&self.app_handle);
-        if settings.paste_timing != PasteTiming::Live || settings.paste_method == PasteMethod::None
-        {
+        if settings.paste_method == PasteMethod::None {
             return;
         }
 
