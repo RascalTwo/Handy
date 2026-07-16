@@ -1218,6 +1218,38 @@ mod tests {
         assert!(settings.bindings.is_empty());
     }
 
+    /// Fork guard for `tauri.conf.json`, which conflicts on **every** upstream
+    /// release: `version` sits two lines from `productName` and `identifier`, so
+    /// a version bump always lands in the same hunk as the fork's identity.
+    ///
+    /// Resolving that hunk in upstream's favour is silent and bad — it restores
+    /// `com.pais.handy` (colliding with a stock install and inheriting its
+    /// Accessibility grant and settings), drops the signing identity back to
+    /// ad-hoc (breaking Accessibility on every rebuild), and re-opens the
+    /// updater endpoint that lets upstream's signed release replace this build.
+    /// Nothing at runtime would tell you. This test does.
+    ///
+    /// Taking upstream's `version` is always correct; that is not checked here.
+    #[test]
+    fn fork_identity_survived_the_rebase() {
+        let conf: serde_json::Value =
+            serde_json::from_str(include_str!("../tauri.conf.json")).expect("tauri.conf.json");
+
+        assert_eq!(
+            conf["identifier"], "com.rascaltwo.handy",
+            "identifier reverted to upstream's — this build would collide with a stock Handy install"
+        );
+        assert_eq!(
+            conf["bundle"]["macOS"]["signingIdentity"], "Handy Fork Local Signing",
+            "signing identity reverted to ad-hoc — Accessibility will break on every rebuild"
+        );
+        assert_eq!(
+            conf["plugins"]["updater"]["endpoints"],
+            serde_json::json!([]),
+            "updater endpoints came back — upstream's signed release can now replace this fork"
+        );
+    }
+
     /// Fork guard. Upstream defaults this to `true`, and the bundled `pubkey` is
     /// upstream's — so an update check finds upstream's release, verifies it, and
     /// installs it *over* this fork. If a rebase ever resolves this back to
