@@ -287,6 +287,61 @@ Kept deliberately additive and localized. `transcription.rs` sees regular
 upstream churn and "settings refactoring" is on upstream's roadmap, so every line
 touched is a future merge conflict. Rebase on release tags rather than `main`.
 
+## Keeping up with upstream
+
+The patch is deliberately a small stack of commits on top of an upstream release
+tag, so updating means replaying it onto the next one. Rebase, don't merge — a
+merge buries the patch in the history and makes "what's actually mine" impossible
+to answer, which is the question you need answered every time upstream refactors
+something underneath it.
+
+```sh
+git remote add upstream https://github.com/cjpais/Handy.git   # one time
+git fetch upstream --tags
+
+git rebase v0.9.4                # or whatever the next release tag is
+# ...resolve, then:
+cd src-tauri && cargo test        # the fork guards live here — see below
+bunx tauri build --bundles app
+git push --force-with-lease
+```
+
+Rebase on **release tags, not `main`.** Tags are tested; `main` is whatever
+landed an hour ago, and you'd be debugging upstream's work-in-progress on top of
+your own.
+
+`git log v0.9.4..HEAD` is then always exactly the fork's delta.
+
+### The conflicts you will actually hit
+
+- **`tauri.conf.json` — every single release.** `version` sits two lines from
+  `productName` and `identifier`, so a version bump always collides with the fork
+  identity. Take upstream's `version`, keep everything else. Resolving it the
+  other way is silent and bad, so `cargo test` has a guard
+  (`fork_identity_survived_the_rebase`) that fails loudly if the identifier,
+  signing identity, or updater endpoints revert. **Run the tests after every
+  rebase** — that guard and `update_checks_are_off_by_default_in_this_fork` exist
+  precisely because nothing at runtime would tell you.
+- **`Cargo.lock`.** Take upstream's wholesale and re-run the build; never
+  hand-merge it.
+- **`transcription.rs` / `actions.rs`.** Where the real work is. Both see regular
+  upstream churn, and "settings refactoring" and "Tauri commands cleanup" are
+  both on upstream's roadmap, so expect a genuine conflict here eventually.
+
+### If upstream changes how bindings work
+
+Adding a transcribe binding means touching **three** places, and missing one
+fails quietly:
+
+1. `ACTION_MAP` (`actions.rs`) — what the binding does.
+2. `get_default_settings()` (`settings.rs`) — its default shortcut.
+3. `is_transcribe_binding()` (`transcription_coordinator.rs`) — **the easy one to
+   miss.** Skip it and the binding silently drops onto the plain press/release
+   path: hold-to-talk regardless of the push-to-talk setting, and outside the
+   coordinator's lifecycle serialisation. That bug shipped here once.
+
+`every_recording_binding_reaches_the_coordinator` pins #3.
+
 ## Trademark note
 
 Upstream's README is explicit that the Handy **name, logo, icon, and brand assets
