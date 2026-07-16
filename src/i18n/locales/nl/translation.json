@@ -254,7 +254,8 @@
         "output": "Uitvoer",
         "transcription": "Transcriptie",
         "history": "Geschiedenis",
-        "experimental": "Experimenteel"
+        "experimental": "Experimenteel",
+        "livePaste": "Live plakken"
       },
       "experimentalToggle": {
         "label": "Experimentele functies",
@@ -321,22 +322,15 @@
         },
         "externalScriptPlaceholder": "/pad/naar/je/script.sh"
       },
-      "pasteTiming": {
-        "title": "Plakmoment",
-        "description": "Wanneer tekst naar de actieve app wordt gestuurd. 'Bij voltooiing' stuurt de hele transcriptie zodra je de sneltoets loslaat. 'Live' typt elk woord zodra het model het vastlegt, één woord achter op wat je hoort. Live vereist een streamingmodel en typt altijd direct; een plakmethode via het klembord wordt genegeerd.",
-        "options": {
-          "onFinish": "Bij voltooiing",
-          "live": "Live (terwijl je spreekt)"
-        },
-        "liveWarning": {
-          "title": "Bij Live plakken:",
-          "postProcessing": "AI-nabewerking herschrijft de hele transcriptie en kan dus niet worden toegepast op woorden die al zijn getypt. Het resultaat wordt weggegooid — schakel een van beide uit.",
+      "livePaste": {
+        "notice": {
+          "title": "Deze sneltoets typt elk woord terwijl je het zegt. Opmerkingen:",
           "pasteClipboard": "Gestreamde woorden worden direct getypt en negeren je Plakmethode, omdat bij elk woord naar het klembord schrijven zou vernietigen wat je had gekopieerd. Alleen het laatste woord gebruikt je Plakmethode.",
           "pasteExternalScript": "Gestreamde woorden worden direct getypt in plaats van via je externe script te gaan. Alleen bij het laatste woord draait het script.",
-          "pasteNone": "De Plakmethode is Geen, dus er wordt nergens iets getypt. Live plakken heeft geen effect totdat je een andere Plakmethode kiest.",
+          "pasteNone": "De Plakmethode is Geen, dus er wordt nergens iets getypt. Deze sneltoets heeft geen effect totdat je een andere Plakmethode kiest.",
           "lastWord": "Het laatste woord komt binnen wanneer je de sneltoets loslaat, niet terwijl je spreekt — het model heeft het nog niet vastgelegd.",
           "cancel": "Annuleren verwijdert woorden die al zijn getypt niet meer.",
-          "streamingOnly": "Alleen streamingmodellen typen terwijl je spreekt. Andere modellen gedragen zich als Bij voltooiing."
+          "streamingOnly": "Alleen streamingmodellen typen terwijl je spreekt. Met elk ander model gedraagt dit zich als de gewone Sneltoets voor dicteren."
         }
       },
       "typingTool": {

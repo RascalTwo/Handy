@@ -155,21 +155,6 @@ pub enum PasteMethod {
     ExternalScript,
 }
 
-/// When transcribed text is sent to the focused app, independent of *how* it is
-/// sent (that is [`PasteMethod`]).
-///
-/// `Live` only has an effect on streaming-capable models; non-streaming runs
-/// produce no partial text to send and behave as `OnFinish` regardless.
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type, Default)]
-#[serde(rename_all = "snake_case")]
-pub enum PasteTiming {
-    /// Send the whole transcription once, after the hotkey is released.
-    #[default]
-    OnFinish,
-    /// Send each newly committed word as the model commits it, mid-recording.
-    Live,
-}
-
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum ClipboardHandling {
@@ -422,8 +407,6 @@ pub struct AppSettings {
     pub recording_retention_period: RecordingRetentionPeriod,
     #[serde(default)]
     pub paste_method: PasteMethod,
-    #[serde(default)]
-    pub paste_timing: PasteTiming,
     #[serde(default)]
     pub clipboard_handling: ClipboardHandling,
     #[serde(default = "default_auto_submit")]
@@ -866,6 +849,27 @@ pub fn get_default_settings() -> AppSettings {
         },
     );
     #[cfg(target_os = "windows")]
+    let default_live_shortcut = "ctrl+alt+space";
+    #[cfg(target_os = "macos")]
+    let default_live_shortcut = "ctrl+option+space";
+    #[cfg(target_os = "linux")]
+    let default_live_shortcut = "ctrl+alt+space";
+    #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
+    let default_live_shortcut = "ctrl+alt+space";
+
+    bindings.insert(
+        "transcribe_live".to_string(),
+        ShortcutBinding {
+            id: "transcribe_live".to_string(),
+            name: "Transcribe Live".to_string(),
+            description: "Converts your speech into text, typing each word as you say it."
+                .to_string(),
+            default_binding: default_live_shortcut.to_string(),
+            current_binding: default_live_shortcut.to_string(),
+        },
+    );
+
+    #[cfg(target_os = "windows")]
     let default_post_process_shortcut = "ctrl+shift+space";
     #[cfg(target_os = "macos")]
     let default_post_process_shortcut = "option+shift+space";
@@ -926,7 +930,6 @@ pub fn get_default_settings() -> AppSettings {
         history_limit: default_history_limit(),
         recording_retention_period: default_recording_retention_period(),
         paste_method: PasteMethod::default(),
-        paste_timing: PasteTiming::default(),
         clipboard_handling: ClipboardHandling::default(),
         auto_submit: default_auto_submit(),
         auto_submit_key: AutoSubmitKey::default(),
@@ -1229,20 +1232,37 @@ mod tests {
         assert!(!get_default_settings().update_checks_enabled);
     }
 
-    /// Live paste is opt-in: a store written before `paste_timing` existed (and
-    /// so every current user's store) must keep the stock end-of-utterance
-    /// behavior rather than silently start typing mid-recording.
+    /// Live paste is reachable only by its own hotkey, mirroring how
+    /// post-processing works — there is no mode setting, so the plain transcribe
+    /// shortcut can never start typing mid-recording.
+    ///
+    /// The three shortcuts must also be distinct: registration rejects a
+    /// duplicate ("already in use"), which would leave one of them silently dead.
     #[test]
-    fn paste_timing_defaults_to_on_finish_and_round_trips() {
-        let absent: AppSettings = serde_json::from_value(serde_json::json!({})).unwrap();
-        assert_eq!(absent.paste_timing, PasteTiming::OnFinish);
+    fn live_paste_has_its_own_distinct_default_shortcut() {
+        let bindings = get_default_settings().bindings;
 
-        let stored: AppSettings =
-            serde_json::from_value(serde_json::json!({ "paste_timing": "live" })).unwrap();
-        assert_eq!(stored.paste_timing, PasteTiming::Live);
+        let live = bindings
+            .get("transcribe_live")
+            .expect("live paste is only reachable via its own binding");
+        assert_eq!(live.current_binding, live.default_binding);
 
-        let written = serde_json::to_value(&stored).unwrap();
-        assert_eq!(written["paste_timing"], "live");
+        let shortcuts: Vec<&str> = [
+            "transcribe",
+            "transcribe_live",
+            "transcribe_with_post_process",
+        ]
+        .iter()
+        .map(|id| bindings[*id].current_binding.as_str())
+        .collect();
+        let mut unique = shortcuts.clone();
+        unique.sort_unstable();
+        unique.dedup();
+        assert_eq!(
+            unique.len(),
+            shortcuts.len(),
+            "default shortcuts collide: {shortcuts:?}"
+        );
     }
 
     /// Frozen snapshot of a real v0.9.0-era settings store, as written to

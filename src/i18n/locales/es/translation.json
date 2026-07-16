@@ -254,7 +254,8 @@
         "output": "Salida",
         "transcription": "Transcripción",
         "history": "Historial",
-        "experimental": "Experimental"
+        "experimental": "Experimental",
+        "livePaste": "Pegado En Vivo"
       },
       "experimentalToggle": {
         "label": "Funciones experimentales",
@@ -321,22 +322,15 @@
         },
         "externalScriptPlaceholder": "/ruta/a/su/script.sh"
       },
-      "pasteTiming": {
-        "title": "Momento de Pegado",
-        "description": "Cuándo se envía el texto a la aplicación activa. Al Finalizar: toda la transcripción llega después de soltar el atajo. En Vivo: cada palabra se escribe en cuanto el modelo la confirma, una palabra por detrás de lo que oyes. En Vivo requiere un modelo de streaming y siempre escribe directamente, ignorando el método de pegado por portapapeles.",
-        "options": {
-          "onFinish": "Al Finalizar",
-          "live": "En Vivo (mientras hablas)"
-        },
-        "liveWarning": {
-          "title": "Con el pegado En Vivo:",
-          "postProcessing": "El posprocesamiento con IA reescribe toda la transcripción, así que no puede aplicarse a las palabras ya escritas. Su resultado se descartará — desactiva uno de los dos.",
+      "livePaste": {
+        "notice": {
+          "title": "Este atajo escribe cada palabra mientras la dices. Notas:",
           "pasteClipboard": "Las palabras transmitidas se escriben directamente, ignorando tu Método de Pegado, porque escribir en el portapapeles una vez por palabra destruiría lo que habías copiado. Solo la última palabra usa tu Método de Pegado.",
           "pasteExternalScript": "Las palabras transmitidas se escriben directamente en lugar de pasar por tu script externo. Solo la última palabra ejecuta el script.",
-          "pasteNone": "El Método de Pegado es Ninguno, así que no se escribe nada en ninguna parte. El pegado En Vivo no tiene efecto hasta que elijas otro Método de Pegado.",
+          "pasteNone": "El Método de Pegado es Ninguno, así que no se escribe nada en ninguna parte. Este atajo no tiene efecto hasta que elijas otro Método de Pegado.",
           "lastWord": "La última palabra llega al soltar el atajo, no mientras hablas — el modelo aún no la ha confirmado.",
           "cancel": "Cancelar ya no elimina las palabras que ya se escribieron.",
-          "streamingOnly": "Solo los modelos de streaming escriben mientras hablas. Los demás modelos se comportan como Al Finalizar."
+          "streamingOnly": "Solo los modelos de streaming escriben mientras hablas. Con cualquier otro modelo, esto se comporta como el Atajo de Transcripción normal."
         }
       },
       "typingTool": {

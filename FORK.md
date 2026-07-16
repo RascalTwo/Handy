@@ -19,24 +19,31 @@ list below is only the delta.
 | --- | --- | --- |
 | App name / bundle id | `Handy` / `com.pais.handy` | `Handy (RascalTwo)` / `com.rascaltwo.handy` |
 | Auto-updater | On, points at upstream's releases | **Off, and disabled by construction** |
-| Paste timing | Always after hotkey release | Optional **Live** — types as you speak |
+| Shortcuts | `transcribe`, `transcribe_with_post_process`, `cancel` | **+ `transcribe_live`** |
 
 ## Patch: Live paste
 
-Adds **Settings → Advanced → Output → Paste Timing**, a dropdown directly below
-Paste Method:
+Adds a third transcribe shortcut. Everything else is unchanged.
 
-| Option | Behavior |
-| --- | --- |
-| **On Finish** (default) | Stock Handy — the whole transcription is pasted after you release the hotkey. |
-| **Live (as you speak)** | Each word is typed into the focused app as the model commits it. |
+| Shortcut | Default (macOS) | Behavior |
+| --- | --- | --- |
+| Transcribe | `option+space` | Stock — the whole transcription is pasted when you release. |
+| **Transcribe Live** | `ctrl+option+space` | **New.** Types each word into the focused app as the model commits it. |
+| Transcribe with Post-Processing | `option+shift+space` | Stock. Never live (see below). |
 
-Paste Method is *how* text is sent. Paste Timing is *when*. They're independent
-axes, which is why this is a new dropdown rather than a new Paste Method.
+This deliberately mirrors how `transcribe_with_post_process` already works: one
+`TranscribeAction`, a flag, a second binding. **There is no mode setting** — the
+shortcut you press *is* the mode, exactly as post-processing has no "post-process
+my main key" setting. Nothing about your existing shortcut changes; the new
+binding is merged into an existing settings store on load.
 
-Default is **On Finish**, so an existing settings store is unaffected until you
-opt in. Selecting **Live** surfaces an in-app notice listing exactly what it
-changes for your current settings.
+Its hotkey lives in **Settings → Advanced → Live Paste**, with a notice under it
+listing what it does differently for your current settings.
+
+That structure also kills the one real incompatibility for free: post-processing
+rewrites the whole transcript, which can't be reconciled with words already
+typed — and because the *binding* decides, the post-processing shortcut simply
+can't be live. The bad combination is unreachable rather than warned about.
 
 ### Why the patch is small
 
@@ -96,8 +103,10 @@ not duplicated: `hf_cached_path` (`model.rs:275`) resolves from
 `~/.cache/huggingface/hub`, so a model you've already downloaded is reused.
 
 **One thing will bite you.** Both apps default the transcribe shortcut to
-`option+space` and both register it globally. Change one of them on first run —
-this fork's settings live at
+`option+space`, and a global shortcut can only be claimed once — whichever app
+registers second logs `Shortcut 'option+space' is already in use` and that
+shortcut silently does nothing. It won't fire twice, but it will look broken.
+Rebind one of them, or just quit the other. This fork's settings live at
 `~/Library/Application Support/com.rascaltwo.handy/settings_store.json`, and its
 logs at `~/Library/Logs/com.rascaltwo.handy/handy.log`.
 
@@ -163,18 +172,19 @@ and types nothing further rather than garbling your text. That line appearing in
 the log is the signal the assumption broke — most likely on a different model or
 a transcribe.cpp bump.
 
-### What Live is incompatible with
+### What the live shortcut does differently
 
-- **LLM post-processing** rewrites the whole transcript, which can't be
-  reconciled with words already typed. `remaining_after_live` detects the
-  mismatch and leaves the live text standing rather than pasting a duplicate. The
-  post-processed result is discarded. Don't enable both.
 - **Clipboard paste methods** are bypassed for streamed words, which are always
   typed directly — one clipboard write per word would destroy your clipboard.
-  Only the final word honors your Paste Method.
+  Only the final word honors your Paste Method. (Paste Method still decides
+  *how* text is sent; this only overrides it mid-stream, where it can't work.)
 - **Cancelling** can't un-type what's already in your document.
-- **Non-streaming models** produce no partial text, so Live silently behaves as
-  On Finish.
+- **Non-streaming models** produce no partial text, so this shortcut behaves
+  exactly like the normal Transcribe shortcut.
+- **Post-processing** isn't a conflict, because it isn't reachable: that's a
+  different shortcut, and it's never live. `remaining_after_live` still detects a
+  mismatch defensively and leaves the live text standing rather than pasting a
+  duplicate.
 
 Push-to-talk *is* fine, despite the obvious worry: enigo's macOS `fast_text`
 posts the literal Unicode string with `CGEventFlagNull`, explicitly ignoring held
@@ -185,12 +195,12 @@ mangle the text. Tested.
 
 | File | Change |
 | --- | --- |
-| `src-tauri/src/settings.rs` | `PasteTiming` enum, `paste_timing` field, updater default off |
-| `src-tauri/src/managers/transcription.rs` | `live_typed` state, `live_delta()`, `inject_live_delta()` |
+| `src-tauri/src/settings.rs` | `transcribe_live` binding default, updater default off |
+| `src-tauri/src/managers/transcription.rs` | `begin_utterance()`, `live_delta()`, `inject_live_delta()` |
 | `src-tauri/src/clipboard.rs` | `paste_raw()` — types text with no trailing space / auto-submit / clipboard write |
-| `src-tauri/src/actions.rs` | `remaining_after_live()` — final paste sends only the untyped remainder |
-| `src/components/settings/PasteTiming.tsx` | The dropdown + the Live notice |
-| `src/components/settings/advanced/AdvancedSettings.tsx` | Renders it under Output |
+| `src-tauri/src/actions.rs` | `live` flag on `TranscribeAction`, `transcribe_live` in `ACTION_MAP`, `remaining_after_live()` |
+| `src/components/settings/LivePaste.tsx` | The live shortcut + its notice |
+| `src/components/settings/advanced/AdvancedSettings.tsx` | Renders the Live Paste group |
 | `src/i18n/locales/*/translation.json` | Strings |
 | `src-tauri/tauri.conf.json` | Fork identity; updater endpoints emptied |
 

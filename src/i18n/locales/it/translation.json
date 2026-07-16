@@ -254,7 +254,8 @@
         "output": "Output",
         "transcription": "Trascrizione",
         "history": "Cronologia",
-        "experimental": "Sperimentale"
+        "experimental": "Sperimentale",
+        "livePaste": "Incollaggio Live"
       },
       "experimentalToggle": {
         "label": "Funzionalità Sperimentali",
@@ -321,22 +322,15 @@
         },
         "externalScriptPlaceholder": "/percorso/del/tuo/script.sh"
       },
-      "pasteTiming": {
-        "title": "Momento di Incollaggio",
-        "description": "Quando il testo viene inviato all'app attiva. Al termine: l'intera trascrizione arriva dopo aver rilasciato la scorciatoia. Live: ogni parola viene digitata non appena il modello la conferma, con una parola di ritardo rispetto a ciò che senti. Live richiede un modello in streaming e digita sempre direttamente, ignorando il metodo di incollaggio tramite appunti.",
-        "options": {
-          "onFinish": "Al termine",
-          "live": "Live (mentre parli)"
-        },
-        "liveWarning": {
-          "title": "Con l'incollaggio Live:",
-          "postProcessing": "La post-elaborazione con IA riscrive l'intera trascrizione, quindi non può applicarsi alle parole già digitate. Il suo risultato verrà scartato — disattiva uno dei due.",
+      "livePaste": {
+        "notice": {
+          "title": "Questa scorciatoia digita ogni parola mentre la pronunci. Note:",
           "pasteClipboard": "Le parole in streaming vengono digitate direttamente, ignorando il tuo Metodo di Incollaggio, perché scrivere negli appunti a ogni parola distruggerebbe ciò che avevi copiato. Solo l'ultima parola usa il tuo Metodo di Incollaggio.",
           "pasteExternalScript": "Le parole in streaming vengono digitate direttamente anziché passare per il tuo script esterno. Solo l'ultima parola esegue lo script.",
-          "pasteNone": "Il Metodo di Incollaggio è Nessuno, quindi non viene digitato nulla da nessuna parte. L'incollaggio Live non ha effetto finché non scegli un altro Metodo di Incollaggio.",
+          "pasteNone": "Il Metodo di Incollaggio è Nessuno, quindi non viene digitato nulla da nessuna parte. Questa scorciatoia non ha effetto finché non scegli un altro Metodo di Incollaggio.",
           "lastWord": "L'ultima parola arriva quando rilasci la scorciatoia, non mentre parli — il modello non l'ha ancora confermata.",
           "cancel": "L'annullamento non rimuove più le parole già digitate.",
-          "streamingOnly": "Solo i modelli in streaming digitano mentre parli. Gli altri modelli si comportano come Al termine."
+          "streamingOnly": "Solo i modelli in streaming digitano mentre parli. Con qualsiasi altro modello questa si comporta come la normale Scorciatoia Trascrizione."
         }
       },
       "typingTool": {

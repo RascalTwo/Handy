@@ -254,7 +254,8 @@
         "output": "Utmatning",
         "transcription": "Transkription",
         "history": "Historik",
-        "experimental": "Experimentellt"
+        "experimental": "Experimentellt",
+        "livePaste": "Live-inklistring"
       },
       "experimentalToggle": {
         "label": "Experimentella funktioner",
@@ -321,22 +322,15 @@
         },
         "externalScriptPlaceholder": "/sökväg/till/ditt/skript.sh"
       },
-      "pasteTiming": {
-        "title": "Tidpunkt för inklistring",
-        "description": "När text skickas till den aktiva appen. Vid slutet: hela transkriberingen kommer efter att du släpper snabbtangenten. Live: varje ord skrivs så snart modellen fastställer det, ett ord efter det du hör. Live kräver en strömmande modell och skriver alltid direkt, och ignorerar en inklistringsmetod via urklipp.",
-        "options": {
-          "onFinish": "Vid slutet",
-          "live": "Live (medan du talar)"
-        },
-        "liveWarning": {
-          "title": "Vid Live-inklistring:",
-          "postProcessing": "AI-efterbearbetning skriver om hela transkriberingen och kan därför inte tillämpas på ord som redan skrivits. Dess resultat kastas bort — stäng av det ena eller det andra.",
+      "livePaste": {
+        "notice": {
+          "title": "Det här kortkommandot skriver varje ord medan du säger det. Att tänka på:",
           "pasteClipboard": "Strömmade ord skrivs direkt och ignorerar din Klistra-in-metod, eftersom att skriva till urklipp för varje ord skulle förstöra det du hade kopierat. Bara det sista ordet använder din Klistra-in-metod.",
           "pasteExternalScript": "Strömmade ord skrivs direkt i stället för att gå via ditt externa skript. Bara det sista ordet kör skriptet.",
-          "pasteNone": "Klistra-in-metoden är Ingen, så ingenting skrivs någonstans. Live-inklistring har ingen effekt förrän du väljer en annan Klistra-in-metod.",
-          "lastWord": "Det sista ordet kommer när du släpper snabbtangenten, inte medan du talar — modellen har inte fastställt det ännu.",
+          "pasteNone": "Klistra-in-metoden är Ingen, så ingenting skrivs någonstans. Det här kortkommandot har ingen effekt förrän du väljer en annan Klistra-in-metod.",
+          "lastWord": "Det sista ordet kommer när du släpper kortkommandot, inte medan du talar — modellen har inte fastställt det ännu.",
           "cancel": "Att avbryta tar inte längre bort ord som redan skrivits.",
-          "streamingOnly": "Bara strömmande modeller skriver medan du talar. Andra modeller beter sig som Vid slutet."
+          "streamingOnly": "Bara strömmande modeller skriver medan du talar. Med någon annan modell beter sig detta som det vanliga Kortkommandot för transkribering."
         }
       },
       "typingTool": {

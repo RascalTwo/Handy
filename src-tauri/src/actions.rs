@@ -90,6 +90,14 @@ pub trait ShortcutAction: Send + Sync {
 // Transcribe Action
 struct TranscribeAction {
     post_process: bool,
+    /// Type each word into the focused app as the model commits it, rather than
+    /// pasting the whole transcription on release. Requires a streaming model;
+    /// otherwise there is no partial text and this behaves as if unset.
+    ///
+    /// Mutually exclusive with `post_process` by construction: post-processing
+    /// rewrites the whole transcript, which can't be reconciled with words
+    /// already typed. No registered action sets both.
+    live: bool,
 }
 
 /// Field name for structured output JSON schema
@@ -550,7 +558,7 @@ impl ShortcutAction for TranscribeAction {
         // Unconditional: a non-streaming utterance must not inherit the previous
         // one's live-typed text, or its final paste gets measured against text
         // that isn't there and comes out empty.
-        tm.reset_live_typed();
+        tm.begin_utterance(self.live);
         if model_supports_streaming {
             tm.start_stream();
         }
@@ -981,11 +989,22 @@ pub static ACTION_MAP: Lazy<HashMap<String, Arc<dyn ShortcutAction>>> = Lazy::ne
         "transcribe".to_string(),
         Arc::new(TranscribeAction {
             post_process: false,
+            live: false,
+        }) as Arc<dyn ShortcutAction>,
+    );
+    map.insert(
+        "transcribe_live".to_string(),
+        Arc::new(TranscribeAction {
+            post_process: false,
+            live: true,
         }) as Arc<dyn ShortcutAction>,
     );
     map.insert(
         "transcribe_with_post_process".to_string(),
-        Arc::new(TranscribeAction { post_process: true }) as Arc<dyn ShortcutAction>,
+        Arc::new(TranscribeAction {
+            post_process: true,
+            live: false,
+        }) as Arc<dyn ShortcutAction>,
     );
     map.insert(
         "cancel".to_string(),

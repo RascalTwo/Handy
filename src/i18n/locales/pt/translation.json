@@ -254,7 +254,8 @@
         "output": "Saída",
         "transcription": "Transcrição",
         "history": "Histórico",
-        "experimental": "Experimental"
+        "experimental": "Experimental",
+        "livePaste": "Colar Ao Vivo"
       },
       "experimentalToggle": {
         "label": "Recursos Experimentais",
@@ -321,22 +322,15 @@
         },
         "externalScriptPlaceholder": "/caminho/para/seu/script.sh"
       },
-      "pasteTiming": {
-        "title": "Momento de Colar",
-        "description": "Quando o texto é enviado para o aplicativo em foco. Ao Concluir: toda a transcrição chega depois de soltar o atalho. Ao Vivo: cada palavra é digitada assim que o modelo a confirma, uma palavra atrás do que você ouve. Ao Vivo exige um modelo de streaming e sempre digita diretamente, ignorando o método de colar pela área de transferência.",
-        "options": {
-          "onFinish": "Ao Concluir",
-          "live": "Ao Vivo (enquanto você fala)"
-        },
-        "liveWarning": {
-          "title": "Com o colar Ao Vivo:",
-          "postProcessing": "O pós-processamento por IA reescreve toda a transcrição, portanto não pode ser aplicado a palavras já digitadas. O resultado dele será descartado — desative um dos dois.",
+      "livePaste": {
+        "notice": {
+          "title": "Este atalho digita cada palavra enquanto você a fala. Observações:",
           "pasteClipboard": "As palavras transmitidas são digitadas diretamente, ignorando seu Método de Colar, porque escrever na área de transferência a cada palavra destruiria o que você havia copiado. Apenas a última palavra usa seu Método de Colar.",
           "pasteExternalScript": "As palavras transmitidas são digitadas diretamente em vez de passar pelo seu script externo. Apenas a última palavra executa o script.",
-          "pasteNone": "O Método de Colar é Nenhum, portanto nada é digitado em lugar algum. O colar Ao Vivo não tem efeito até você escolher outro Método de Colar.",
+          "pasteNone": "O Método de Colar é Nenhum, portanto nada é digitado em lugar algum. Este atalho não tem efeito até você escolher outro Método de Colar.",
           "lastWord": "A última palavra chega quando você solta o atalho, não enquanto fala — o modelo ainda não a confirmou.",
           "cancel": "Cancelar já não remove as palavras que já foram digitadas.",
-          "streamingOnly": "Apenas modelos de streaming digitam enquanto você fala. Outros modelos se comportam como Ao Concluir."
+          "streamingOnly": "Apenas modelos de streaming digitam enquanto você fala. Com qualquer outro modelo, isto se comporta como o Atalho de Transcrição normal."
         }
       },
       "typingTool": {

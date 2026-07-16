@@ -254,7 +254,8 @@
         "output": "Sortie",
         "transcription": "Transcription",
         "history": "Historique",
-        "experimental": "Expérimental"
+        "experimental": "Expérimental",
+        "livePaste": "Collage En direct"
       },
       "experimentalToggle": {
         "label": "Fonctionnalités Expérimentales",
@@ -321,22 +322,15 @@
         },
         "externalScriptPlaceholder": "/chemin/vers/votre/script.sh"
       },
-      "pasteTiming": {
-        "title": "Moment du collage",
-        "description": "Quand le texte est envoyé à l'application active. À la fin : toute la transcription arrive après le relâchement du raccourci. En direct : chaque mot est saisi dès que le modèle le valide, avec un mot de retard sur ce que vous entendez. Le mode en direct nécessite un modèle en streaming et saisit toujours directement, en ignorant une méthode de collage par presse-papiers.",
-        "options": {
-          "onFinish": "À la fin",
-          "live": "En direct (pendant que vous parlez)"
-        },
-        "liveWarning": {
-          "title": "Avec le collage En direct :",
-          "postProcessing": "Le post-traitement par IA réécrit toute la transcription et ne peut donc pas s'appliquer aux mots déjà saisis. Son résultat sera rejeté — désactivez l'un des deux.",
+      "livePaste": {
+        "notice": {
+          "title": "Ce raccourci saisit chaque mot à mesure que vous le dites. Remarques :",
           "pasteClipboard": "Les mots diffusés sont saisis directement, en ignorant votre Méthode de collage, car écrire dans le presse-papiers à chaque mot détruirait ce que vous aviez copié. Seul le dernier mot utilise votre Méthode de collage.",
           "pasteExternalScript": "Les mots diffusés sont saisis directement au lieu de passer par votre script externe. Seul le dernier mot exécute le script.",
-          "pasteNone": "La Méthode de collage est Aucun, donc rien n'est saisi nulle part. Le collage En direct n'a aucun effet tant que vous ne choisissez pas une autre Méthode de collage.",
+          "pasteNone": "La Méthode de collage est Aucun, donc rien n'est saisi nulle part. Ce raccourci n'a aucun effet tant que vous ne choisissez pas une autre Méthode de collage.",
           "lastWord": "Le dernier mot arrive au relâchement du raccourci, pas pendant que vous parlez — le modèle ne l'a pas encore validé.",
           "cancel": "L'annulation ne supprime plus les mots déjà saisis.",
-          "streamingOnly": "Seuls les modèles en streaming saisissent pendant que vous parlez. Les autres modèles se comportent comme À la fin."
+          "streamingOnly": "Seuls les modèles en streaming saisissent pendant que vous parlez. Avec tout autre modèle, cela se comporte comme le Raccourci de Transcription normal."
         }
       },
       "typingTool": {

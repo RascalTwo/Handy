@@ -254,7 +254,8 @@
         "output": "Ausgabe",
         "transcription": "Transkription",
         "history": "Verlauf",
-        "experimental": "Experimentell"
+        "experimental": "Experimentell",
+        "livePaste": "Live-Einfügen"
       },
       "experimentalToggle": {
         "label": "Experimentelle Funktionen",
@@ -321,22 +322,15 @@
         },
         "externalScriptPlaceholder": "/pfad/zu/ihrem/skript.sh"
       },
-      "pasteTiming": {
-        "title": "Einfügezeitpunkt",
-        "description": "Wann Text an die fokussierte App gesendet wird. Nach Abschluss: die gesamte Transkription kommt an, nachdem du das Tastenkürzel loslässt. Live: jedes Wort wird getippt, sobald das Modell es festlegt, ein Wort hinter dem, was du hörst. Live erfordert ein Streaming-Modell und tippt immer direkt, wobei eine Einfügemethode über die Zwischenablage ignoriert wird.",
-        "options": {
-          "onFinish": "Nach Abschluss",
-          "live": "Live (während du sprichst)"
-        },
-        "liveWarning": {
-          "title": "Bei Live-Einfügen:",
-          "postProcessing": "Die KI-Nachbearbeitung schreibt die gesamte Transkription um und kann daher nicht auf bereits getippte Wörter angewendet werden. Ihr Ergebnis wird verworfen — schalte eines von beiden aus.",
+      "livePaste": {
+        "notice": {
+          "title": "Dieses Tastenkürzel tippt jedes Wort, während du es sagst. Hinweise:",
           "pasteClipboard": "Gestreamte Wörter werden direkt getippt und ignorieren deine Einfügemethode, denn ein Schreiben in die Zwischenablage bei jedem Wort würde zerstören, was du kopiert hattest. Nur das letzte Wort nutzt deine Einfügemethode.",
           "pasteExternalScript": "Gestreamte Wörter werden direkt getippt, statt durch dein externes Skript zu laufen. Nur beim letzten Wort läuft das Skript.",
-          "pasteNone": "Die Einfügemethode ist Keine, daher wird nirgendwo etwas getippt. Live-Einfügen hat keine Wirkung, bis du eine andere Einfügemethode wählst.",
+          "pasteNone": "Die Einfügemethode ist Keine, daher wird nirgendwo etwas getippt. Dieses Tastenkürzel hat keine Wirkung, bis du eine andere Einfügemethode wählst.",
           "lastWord": "Das letzte Wort kommt an, wenn du das Tastenkürzel loslässt, nicht während du sprichst — das Modell hat es noch nicht festgelegt.",
           "cancel": "Abbrechen entfernt bereits getippte Wörter nicht mehr.",
-          "streamingOnly": "Nur Streaming-Modelle tippen, während du sprichst. Andere Modelle verhalten sich wie Nach Abschluss."
+          "streamingOnly": "Nur Streaming-Modelle tippen, während du sprichst. Mit jedem anderen Modell verhält sich dies wie das normale Transkriptions-Tastenkürzel."
         }
       },
       "typingTool": {
