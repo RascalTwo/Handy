@@ -15,7 +15,7 @@ use crate::utils::{
 };
 use crate::TranscriptionCoordinator;
 use ferrous_opencc::{config::BuiltinConfig, OpenCC};
-use log::{debug, error, warn};
+use log::{debug, error, info, warn};
 use once_cell::sync::Lazy;
 use std::collections::HashMap;
 use std::future::Future;
@@ -25,6 +25,40 @@ use tauri::Manager;
 use tauri::{AppHandle, Emitter};
 
 const CANCELLATION_POLL_INTERVAL: Duration = Duration::from_millis(25);
+
+/// The part of `final_text` that live injection has not already typed.
+///
+/// Returns `None` when there is nothing left to paste, including the case where
+/// live injection typed text that `final_text` then contradicted — pasting the
+/// whole thing there would duplicate the utterance, so the already-typed text is
+/// left standing instead. Post-processing that rewrites the transcript
+/// wholesale (an LLM prompt) is the way to provoke that; it is fundamentally at
+/// odds with having already typed the un-rewritten words.
+///
+/// With live injection off, `live_typed_text()` is empty and this is a no-op
+/// that returns `final_text` unchanged.
+fn remaining_after_live(final_text: &str, tm: &TranscriptionManager) -> Option<String> {
+    let typed = tm.live_typed_text();
+    if typed.is_empty() {
+        return (!final_text.is_empty()).then(|| final_text.to_string());
+    }
+
+    match final_text.strip_prefix(typed.as_str()) {
+        Some(rest) if rest.trim().is_empty() => {
+            info!("live paste: already typed the full transcription; nothing left to paste");
+            None
+        }
+        Some(rest) => Some(rest.to_string()),
+        None => {
+            warn!(
+                "live paste: final text {:?} does not extend the live-typed text {:?}; \
+                 leaving the live text as-is rather than pasting a duplicate",
+                final_text, typed
+            );
+            None
+        }
+    }
+}
 
 #[derive(Clone, serde::Serialize)]
 struct RecordingErrorEvent {
@@ -513,6 +547,10 @@ impl ShortcutAction for TranscribeAction {
         } else {
             VadPolicy::Offline
         };
+        // Unconditional: a non-streaming utterance must not inherit the previous
+        // one's live-typed text, or its final paste gets measured against text
+        // that isn't there and comes out empty.
+        tm.reset_live_typed();
         if model_supports_streaming {
             tm.start_stream();
         }
@@ -812,7 +850,18 @@ impl ShortcutAction for TranscribeAction {
                             } else {
                                 let ah_clone = ah.clone();
                                 let paste_time = Instant::now();
-                                let final_text = processed.final_text;
+                                // Live injection already typed a prefix of this
+                                // text; send only what it has not sent yet.
+                                // History above still records the full text.
+                                let final_text =
+                                    match remaining_after_live(&processed.final_text, &tm) {
+                                        Some(text) => text,
+                                        None => {
+                                            utils::hide_recording_overlay(&ah);
+                                            change_tray_icon(&ah, TrayIconState::Idle);
+                                            return;
+                                        }
+                                    };
                                 let rm_for_paste = Arc::clone(&rm);
                                 ah.run_on_main_thread(move || {
                                     if rm_for_paste.was_cancelled_since(cancel_generation) {

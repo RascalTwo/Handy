@@ -5,7 +5,7 @@ use crate::audio_toolkit::{
 use crate::managers::audio::AudioRecordingManager;
 use crate::managers::model::{EngineType, ModelManager};
 use crate::settings::{
-    get_settings, AppSettings, ModelUnloadTimeout, OrtAcceleratorSetting,
+    get_settings, AppSettings, ModelUnloadTimeout, OrtAcceleratorSetting, PasteMethod, PasteTiming,
     TranscribeAcceleratorSetting,
 };
 use anyhow::Result;
@@ -273,6 +273,10 @@ pub struct TranscriptionManager {
     /// yet. This prevents a second worker from starting after finalize/cancel
     /// closes the router but before the first worker has fully exited.
     active_stream_worker: Arc<AtomicU64>,
+    /// Post-filtered committed text already typed into the focused app by the
+    /// live-injection path. Empty unless `paste_timing` is `Live`. Reset per
+    /// stream; read at finalize so only the untyped remainder is pasted.
+    live_typed: Arc<Mutex<String>>,
     /// Nonzero while the streaming worker has taken the engine out of `engine`.
     /// `is_model_loaded()` consults this so the model still reports "loaded"
     /// while the worker holds it.
@@ -294,6 +298,7 @@ impl TranscriptionManager {
             reload_model_on_next_use: Arc::new(AtomicBool::new(false)),
             router: Arc::new(StreamRouter::new()),
             stream_active: Arc::new(AtomicBool::new(false)),
+            live_typed: Arc::new(Mutex::new(String::new())),
             next_stream_worker_id: Arc::new(AtomicU64::new(1)),
             active_stream_worker: Arc::new(AtomicU64::new(0)),
             active_engine_lease: Arc::new(AtomicU64::new(0)),
@@ -992,6 +997,13 @@ impl TranscriptionManager {
                                 if update.committed_changed || update.tentative_changed {
                                     let text = stream.text();
                                     perf.record_emit();
+                                    // Only the committed prefix is ever typed, and
+                                    // deriving the delta re-runs the output filter —
+                                    // skip that on tentative-only churn, which is
+                                    // most updates.
+                                    if update.committed_changed {
+                                        self.inject_live_delta(&text.committed);
+                                    }
                                     self.emit_stream_text(&text.committed, &text.tentative);
                                 }
                                 perf.maybe_log();
@@ -1153,6 +1165,59 @@ impl TranscriptionManager {
             kind: Some(kind),
         }
         .emit(&self.app_handle);
+    }
+
+    /// Text already typed into the focused app by the live-injection path.
+    pub fn live_typed_text(&self) -> String {
+        self.live_typed
+            .lock()
+            .map(|t| t.clone())
+            .unwrap_or_default()
+    }
+
+    /// Forget any live-injection progress, so the next utterance starts from zero.
+    ///
+    /// Must be called on *every* utterance, not just streaming ones. Otherwise a
+    /// streaming utterance's typed text outlives it, and the next non-streaming
+    /// utterance — a model switch, or a model whose capability isn't known yet —
+    /// would have its final paste measured against text from the previous one,
+    /// match nothing, and paste nothing at all.
+    pub fn reset_live_typed(&self) {
+        if let Ok(mut typed) = self.live_typed.lock() {
+            typed.clear();
+        }
+    }
+
+    /// Type newly committed words into the focused app mid-recording.
+    fn inject_live_delta(&self, committed: &str) {
+        let settings = get_settings(&self.app_handle);
+        if settings.paste_timing != PasteTiming::Live || settings.paste_method == PasteMethod::None
+        {
+            return;
+        }
+
+        let Ok(mut typed) = self.live_typed.lock() else {
+            return;
+        };
+        let Some((delta, eligible)) = live_delta(committed, &typed, &settings) else {
+            return;
+        };
+
+        *typed = eligible;
+        drop(typed);
+
+        // Enigo is main-thread-only here, matching the terminal paste path in
+        // actions.rs. run_on_main_thread preserves submission order, so words
+        // land in the order they were committed.
+        let app_handle = self.app_handle.clone();
+        if let Err(e) = self.app_handle.run_on_main_thread(move || {
+            match crate::utils::paste_raw(&delta, &app_handle) {
+                Ok(()) => {}
+                Err(e) => error!("live paste failed: {}", e),
+            }
+        }) {
+            error!("live paste could not reach the main thread: {:?}", e);
+        }
     }
 
     fn emit_stream_text(&self, committed: &str, tentative: &str) {
@@ -1753,6 +1818,52 @@ fn transcribe_cpp_run_plan(
         task,
         language,
         target_language,
+    }
+}
+
+/// Work out what live paste should type next, given the committed text so far
+/// and what it has already typed.
+///
+/// Returns `(delta_to_type, new_typed_state)`, or `None` when there is nothing
+/// to type.
+///
+/// Only the *complete* words of `committed` are eligible. Filler-word filtering
+/// matches on word boundaries, so running it over a half-streamed word ("u"
+/// before it becomes "um") would type text the final filter then disagrees with.
+/// Holding back the trailing word costs one word of latency and keeps live
+/// output byte-identical to the final text.
+///
+/// The whole eligible prefix is re-filtered and re-diffed on every call rather
+/// than each delta being filtered in isolation. That is what makes the filter's
+/// retroactive edits land correctly — a filler is only dropped once the word
+/// after it arrives — and it means a `committed` that contradicts its own
+/// append-only contract is caught here instead of silently doubling text.
+fn live_delta(
+    committed: &str,
+    already_typed: &str,
+    settings: &AppSettings,
+) -> Option<(String, String)> {
+    // Complete words only — everything up to the last whitespace.
+    let end = committed.rfind(char::is_whitespace)?;
+    let eligible = post_process_transcription_text(committed[..end].to_string(), settings, false);
+
+    match eligible.strip_prefix(already_typed) {
+        // Committed grew, but not past the last word boundary yet.
+        Some("") => None,
+        Some(delta) => Some((delta.to_string(), eligible.clone())),
+        None => {
+            // `committed` contradicted its own append-only contract. What was
+            // typed can't be recalled, so type nothing more rather than garble
+            // it. The caller leaves `already_typed` untouched: a genuine
+            // divergence keeps failing this check (the old prefix is gone for
+            // good), while a transient one heals and resumes on a later update.
+            warn!(
+                "live paste: committed prefix diverged (typed {:?}, now {:?}); \
+                 not typing further until it extends what was already typed",
+                already_typed, eligible
+            );
+            None
+        }
     }
 }
 
@@ -2454,6 +2565,124 @@ mod tests {
         assert!(matches!(plan.task, Task::Transcribe));
         assert_eq!(plan.language.as_deref(), Some("es"));
         assert_eq!(plan.target_language, None);
+    }
+
+    /// English so `filter_transcription_output` uses the stock filler list —
+    /// live paste has to agree with the filter that runs on the final text.
+    fn live_paste_settings() -> AppSettings {
+        let mut settings = crate::settings::get_default_settings();
+        settings.app_language = "en-US".to_string();
+        settings
+    }
+
+    /// Drive `live_delta` over a growing `committed`, as the stream worker does,
+    /// and return what got typed and in what order.
+    fn type_along(updates: &[&str]) -> (Vec<String>, String) {
+        let settings = live_paste_settings();
+        let mut typed = String::new();
+        let mut deltas = Vec::new();
+        for update in updates {
+            if let Some((delta, next)) = live_delta(update, &typed, &settings) {
+                deltas.push(delta);
+                typed = next;
+            }
+        }
+        (deltas, typed)
+    }
+
+    #[test]
+    fn live_delta_holds_back_the_trailing_word() {
+        // "world" has no whitespace after it yet, so it is still in flight.
+        let (deltas, typed) = type_along(&["hello world"]);
+
+        assert_eq!(deltas, vec!["hello"]);
+        assert_eq!(typed, "hello");
+    }
+
+    #[test]
+    fn live_delta_types_each_word_once_as_it_commits() {
+        let (deltas, typed) = type_along(&["hello ", "hello world ", "hello world today "]);
+
+        assert_eq!(deltas, vec!["hello", " world", " today"]);
+        assert_eq!(typed, "hello world today");
+    }
+
+    #[test]
+    fn live_delta_emits_nothing_when_committed_has_not_passed_a_word_boundary() {
+        let (deltas, typed) = type_along(&["hello ", "hello wor"]);
+
+        assert_eq!(deltas, vec!["hello"]);
+        assert_eq!(typed, "hello");
+    }
+
+    /// The filler filter only drops "um" once the word *after* it arrives, so a
+    /// naive per-delta filter would type "um" and then have the final text
+    /// disagree. Re-filtering the whole prefix each time is what prevents that.
+    #[test]
+    fn live_delta_never_types_a_filler_word() {
+        let (deltas, typed) =
+            type_along(&["hello um ", "hello um world ", "hello um world today "]);
+
+        assert!(
+            !deltas.iter().any(|d| d.contains("um")),
+            "typed a filler word: {deltas:?}"
+        );
+        assert_eq!(typed, "hello world today");
+    }
+
+    /// What live paste types must be a prefix of what the final paste computes,
+    /// or `remaining_after_live` can't subtract it.
+    #[test]
+    fn live_typed_text_is_a_prefix_of_the_final_filtered_text() {
+        let settings = live_paste_settings();
+        let spoken = "hello um world today";
+        let (_, typed) = type_along(&["hello ", "hello um ", "hello um world "]);
+
+        let final_text = post_process_transcription_text(spoken.to_string(), &settings, false);
+
+        assert_eq!(typed, "hello world");
+        assert!(
+            final_text.starts_with(&typed),
+            "final {final_text:?} does not extend typed {typed:?}"
+        );
+        assert_eq!(final_text.strip_prefix(&typed), Some(" today"));
+    }
+
+    #[test]
+    fn live_delta_refuses_to_type_when_committed_contradicts_itself() {
+        let settings = live_paste_settings();
+
+        // "hello world" was typed; the model now claims it said "hello word".
+        assert_eq!(
+            live_delta("hello word today ", "hello world", &settings),
+            None
+        );
+    }
+
+    /// Guards why `reset_live_typed` runs per-utterance rather than per-stream:
+    /// `start_stream` is only called for streaming-capable models, so text typed
+    /// during a streaming utterance would otherwise outlive it. The next
+    /// utterance's final paste then subtracts text that was never typed for it,
+    /// matches nothing, and swallows the whole transcription.
+    #[test]
+    fn stale_typed_text_from_a_previous_utterance_would_swallow_the_next() {
+        let settings = live_paste_settings();
+        let stale = "hello world"; // typed during a previous, streaming utterance
+
+        // A new utterance's text does not extend the previous one's, so nothing
+        // can be typed and the final paste would find no prefix to subtract.
+        assert_eq!(live_delta("goodbye there now ", stale, &settings), None);
+        assert_eq!("goodbye there now".strip_prefix(stale), None);
+
+        // Cleared, the same utterance behaves normally. All three words are
+        // eligible here — the trailing space is the boundary proving "now" whole.
+        assert_eq!(
+            live_delta("goodbye there now ", "", &settings),
+            Some((
+                "goodbye there now".to_string(),
+                "goodbye there now".to_string()
+            ))
+        );
     }
 }
 

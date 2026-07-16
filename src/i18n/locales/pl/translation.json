@@ -321,6 +321,24 @@
         },
         "externalScriptPlaceholder": "/sciezka/do/twojego/skryptu.sh"
       },
+      "pasteTiming": {
+        "title": "Moment wklejania",
+        "description": "Kiedy tekst jest wysyłany do aktywnej aplikacji. Po zakończeniu: cała transkrypcja pojawia się po zwolnieniu skrótu klawiszowego. Na żywo: każde słowo jest wpisywane, gdy model je zatwierdzi, z opóźnieniem jednego słowa względem tego, co słyszysz. Tryb na żywo wymaga modelu strumieniowego i zawsze wpisuje bezpośrednio, ignorując metodę wklejania przez schowek.",
+        "options": {
+          "onFinish": "Po zakończeniu",
+          "live": "Na żywo (podczas mówienia)"
+        },
+        "liveWarning": {
+          "title": "Przy wklejaniu Na żywo:",
+          "postProcessing": "Przetwarzanie końcowe przez AI przepisuje całą transkrypcję, więc nie może objąć słów już wpisanych. Jego wynik zostanie odrzucony — wyłącz jedno z dwóch.",
+          "pasteClipboard": "Strumieniowane słowa są wpisywane bezpośrednio, z pominięciem Twojej Metody wklejania, ponieważ zapis do schowka przy każdym słowie zniszczyłby to, co masz skopiowane. Twojej Metody wklejania używa tylko ostatnie słowo.",
+          "pasteExternalScript": "Strumieniowane słowa są wpisywane bezpośrednio, zamiast przechodzić przez Twój skrypt zewnętrzny. Skrypt uruchamia się tylko dla ostatniego słowa.",
+          "pasteNone": "Metoda wklejania to Brak, więc nic nigdzie nie jest wpisywane. Wklejanie Na żywo nie działa, dopóki nie wybierzesz innej Metody wklejania.",
+          "lastWord": "Ostatnie słowo pojawia się po zwolnieniu skrótu klawiszowego, a nie podczas mówienia — model jeszcze go nie zatwierdził.",
+          "cancel": "Anulowanie nie usuwa już słów, które zostały wpisane.",
+          "streamingOnly": "Tylko modele strumieniowe wpisują tekst podczas mówienia. Inne modele zachowują się jak Po zakończeniu."
+        }
+      },
       "typingTool": {
         "title": "Narzędzie do wpisywania",
         "description": "Wybierz, którego narzędzia do wpisywania w Linuxie użyć dla metody bezpośredniego wklejania. Auto automatycznie wykryje i użyje najlepszego dostępnego narzędzia dla Twojego systemu.",

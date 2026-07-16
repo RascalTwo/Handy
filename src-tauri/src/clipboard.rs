@@ -762,6 +762,37 @@ fn should_send_auto_submit(auto_submit: bool, paste_method: PasteMethod) -> bool
     auto_submit && paste_method != PasteMethod::None
 }
 
+/// Send `text` to the focused app with none of [`paste`]'s end-of-utterance
+/// behavior — no trailing space, no auto-submit, no clipboard write.
+///
+/// Used by live injection, which sends a partial transcription many times per
+/// utterance; those behaviors are only correct once, at the end.
+///
+/// Live injection always types directly. The clipboard methods would clobber the
+/// user's clipboard on every committed word, so a `ctrl_v`-style `paste_method`
+/// is honored as "direct" here rather than skipped.
+pub fn paste_raw(text: &str, app_handle: &AppHandle) -> Result<(), String> {
+    let settings = get_settings(app_handle);
+    if settings.paste_method == PasteMethod::None {
+        return Ok(());
+    }
+
+    let enigo_state = app_handle
+        .try_state::<EnigoState>()
+        .ok_or("Enigo state not initialized")?;
+    let mut enigo = enigo_state
+        .0
+        .lock()
+        .map_err(|e| format!("Failed to lock Enigo: {}", e))?;
+
+    paste_direct(
+        &mut enigo,
+        text,
+        #[cfg(target_os = "linux")]
+        settings.typing_tool,
+    )
+}
+
 pub fn paste(text: String, app_handle: AppHandle) -> Result<(), String> {
     let settings = get_settings(&app_handle);
     let paste_method = settings.paste_method;

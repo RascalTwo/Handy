@@ -155,6 +155,21 @@ pub enum PasteMethod {
     ExternalScript,
 }
 
+/// When transcribed text is sent to the focused app, independent of *how* it is
+/// sent (that is [`PasteMethod`]).
+///
+/// `Live` only has an effect on streaming-capable models; non-streaming runs
+/// produce no partial text to send and behave as `OnFinish` regardless.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum PasteTiming {
+    /// Send the whole transcription once, after the hotkey is released.
+    #[default]
+    OnFinish,
+    /// Send each newly committed word as the model commits it, mid-recording.
+    Live,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum ClipboardHandling {
@@ -408,6 +423,8 @@ pub struct AppSettings {
     #[serde(default)]
     pub paste_method: PasteMethod,
     #[serde(default)]
+    pub paste_timing: PasteTiming,
+    #[serde(default)]
     pub clipboard_handling: ClipboardHandling,
     #[serde(default = "default_auto_submit")]
     pub auto_submit: bool,
@@ -513,8 +530,13 @@ fn default_autostart_enabled() -> bool {
     false
 }
 
+/// Off in this fork. The bundled `pubkey` is upstream's, so upstream's signed
+/// releases would verify and install *over* this build, silently reverting it to
+/// stock Handy. `tauri.conf.json` also ships no updater endpoints, which makes
+/// the updater fail closed (`Error::EmptyEndpoints`) even if this is turned back
+/// on. See FORK.md.
 fn default_update_checks_enabled() -> bool {
-    true
+    false
 }
 
 fn default_show_whats_new_on_update() -> bool {
@@ -904,6 +926,7 @@ pub fn get_default_settings() -> AppSettings {
         history_limit: default_history_limit(),
         recording_retention_period: default_recording_retention_period(),
         paste_method: PasteMethod::default(),
+        paste_timing: PasteTiming::default(),
         clipboard_handling: ClipboardHandling::default(),
         auto_submit: default_auto_submit(),
         auto_submit_key: AutoSubmitKey::default(),
@@ -1190,6 +1213,36 @@ mod tests {
         assert!(settings.filler_word_removal_enabled);
         // Bindings default to empty; the load path merges the real defaults in.
         assert!(settings.bindings.is_empty());
+    }
+
+    /// Fork guard. Upstream defaults this to `true`, and the bundled `pubkey` is
+    /// upstream's — so an update check finds upstream's release, verifies it, and
+    /// installs it *over* this fork. If a rebase ever resolves this back to
+    /// upstream's `true`, this test is the thing that catches it.
+    #[test]
+    fn update_checks_are_off_by_default_in_this_fork() {
+        let fresh: AppSettings = serde_json::from_value(serde_json::json!({})).unwrap();
+        assert!(
+            !fresh.update_checks_enabled,
+            "update checks must stay off — upstream's signed releases would replace this fork"
+        );
+        assert!(!get_default_settings().update_checks_enabled);
+    }
+
+    /// Live paste is opt-in: a store written before `paste_timing` existed (and
+    /// so every current user's store) must keep the stock end-of-utterance
+    /// behavior rather than silently start typing mid-recording.
+    #[test]
+    fn paste_timing_defaults_to_on_finish_and_round_trips() {
+        let absent: AppSettings = serde_json::from_value(serde_json::json!({})).unwrap();
+        assert_eq!(absent.paste_timing, PasteTiming::OnFinish);
+
+        let stored: AppSettings =
+            serde_json::from_value(serde_json::json!({ "paste_timing": "live" })).unwrap();
+        assert_eq!(stored.paste_timing, PasteTiming::Live);
+
+        let written = serde_json::to_value(&stored).unwrap();
+        assert_eq!(written["paste_timing"], "live");
     }
 
     /// Frozen snapshot of a real v0.9.0-era settings store, as written to

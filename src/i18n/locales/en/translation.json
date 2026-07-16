@@ -321,6 +321,24 @@
         },
         "externalScriptPlaceholder": "/path/to/your/script.sh"
       },
+      "pasteTiming": {
+        "title": "Paste Timing",
+        "description": "When text is sent to the focused app. On Finish: the whole transcription arrives after you release the hotkey. Live: each word is typed as the model commits it, one word behind what you hear. Live requires a streaming model and always types directly, ignoring a clipboard paste method.",
+        "options": {
+          "onFinish": "On Finish",
+          "live": "Live (as you speak)"
+        },
+        "liveWarning": {
+          "title": "With Live paste:",
+          "postProcessing": "AI post-processing rewrites the whole transcription, so it cannot apply to words already typed. Its result will be discarded — turn one of them off.",
+          "pasteClipboard": "Streamed words are typed directly, ignoring your Paste Method, because writing to the clipboard once per word would destroy what you had copied. Only the last word uses your Paste Method.",
+          "pasteExternalScript": "Streamed words are typed directly rather than going through your external script. Only the last word runs the script.",
+          "pasteNone": "Paste Method is None, so nothing is typed anywhere. Live paste has no effect until you pick another Paste Method.",
+          "lastWord": "The last word arrives when you release the hotkey, not while you speak — the model has not committed it yet.",
+          "cancel": "Cancelling no longer removes words that were already typed.",
+          "streamingOnly": "Only streaming models type as you speak. Other models behave as On Finish."
+        }
+      },
       "typingTool": {
         "title": "Typing Tool",
         "description": "Choose which Linux typing tool to use for Direct paste method. Auto will automatically detect and use the best available tool for your system.",

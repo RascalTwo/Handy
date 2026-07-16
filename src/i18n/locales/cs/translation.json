@@ -321,6 +321,24 @@
         },
         "externalScriptPlaceholder": "/cesta/k/vasemu/skriptu.sh"
       },
+      "pasteTiming": {
+        "title": "Načasování vložení",
+        "description": "Kdy se text odešle do aktivní aplikace. Po dokončení: celý přepis dorazí po uvolnění klávesové zkratky. Živě: každé slovo se píše, jakmile ho model potvrdí, s odstupem jednoho slova za tím, co slyšíte. Živý režim vyžaduje streamovací model a vždy píše přímo, přičemž ignoruje vkládání přes schránku.",
+        "options": {
+          "onFinish": "Po dokončení",
+          "live": "Živě (jak mluvíte)"
+        },
+        "liveWarning": {
+          "title": "Při živém vkládání:",
+          "postProcessing": "Následné zpracování pomocí AI přepisuje celý přepis, takže je nelze použít na již napsaná slova. Jeho výsledek bude zahozen — jedno z toho vypněte.",
+          "pasteClipboard": "Streamovaná slova se píší přímo a ignorují váš Způsob vložení, protože zápis do schránky u každého slova by zničil to, co jste měli zkopírované. Váš Způsob vložení použije jen poslední slovo.",
+          "pasteExternalScript": "Streamovaná slova se píší přímo, místo aby procházela vaším externím skriptem. Skript se spustí jen u posledního slova.",
+          "pasteNone": "Způsob vložení je Žádné, takže se nikam nic nepíše. Živé vkládání nemá žádný účinek, dokud nezvolíte jiný Způsob vložení.",
+          "lastWord": "Poslední slovo dorazí až po uvolnění klávesové zkratky, ne během mluvení — model ho ještě nepotvrdil.",
+          "cancel": "Zrušení už neodstraní slova, která už byla napsána.",
+          "streamingOnly": "Jen streamovací modely píší, zatímco mluvíte. Ostatní modely se chovají jako Po dokončení."
+        }
+      },
       "typingTool": {
         "title": "Nástroj pro psaní",
         "description": "Vyberte, který linuxový nástroj pro psaní použít pro metodu přímého vložení. Auto automaticky zjistí a použije nejlepší dostupný nástroj pro váš systém.",

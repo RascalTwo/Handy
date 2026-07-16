@@ -321,6 +321,24 @@
         },
         "externalScriptPlaceholder": "/duong-dan/toi/script.sh"
       },
+      "pasteTiming": {
+        "title": "Thời điểm dán",
+        "description": "Khi nào văn bản được gửi đến ứng dụng đang mở. Khi hoàn tất: toàn bộ bản chép lời xuất hiện sau khi bạn thả phím tắt. Trực tiếp: mỗi từ được gõ ngay khi mô hình xác nhận, chậm hơn một từ so với những gì bạn nghe. Chế độ trực tiếp cần mô hình hỗ trợ streaming và luôn gõ trực tiếp, bỏ qua phương thức dán qua clipboard.",
+        "options": {
+          "onFinish": "Khi hoàn tất",
+          "live": "Trực tiếp (khi bạn nói)"
+        },
+        "liveWarning": {
+          "title": "Khi dán Trực tiếp:",
+          "postProcessing": "Hậu xử lý bằng AI viết lại toàn bộ bản chép lời, nên không thể áp dụng cho những từ đã được gõ. Kết quả của nó sẽ bị loại bỏ — hãy tắt một trong hai.",
+          "pasteClipboard": "Các từ được truyền trực tiếp sẽ được gõ thẳng, bỏ qua Phương thức dán của bạn, vì ghi vào clipboard ở mỗi từ sẽ phá hỏng nội dung bạn đã sao chép. Chỉ từ cuối cùng mới dùng Phương thức dán của bạn.",
+          "pasteExternalScript": "Các từ được truyền trực tiếp sẽ được gõ thẳng thay vì đi qua script bên ngoài của bạn. Chỉ từ cuối cùng mới chạy script.",
+          "pasteNone": "Phương thức dán là Không có, nên không có gì được gõ ở bất kỳ đâu. Dán trực tiếp không có tác dụng cho đến khi bạn chọn Phương thức dán khác.",
+          "lastWord": "Từ cuối cùng xuất hiện khi bạn thả phím tắt, không phải trong lúc bạn nói — mô hình vẫn chưa xác nhận nó.",
+          "cancel": "Hủy không còn xóa được những từ đã được gõ.",
+          "streamingOnly": "Chỉ mô hình hỗ trợ streaming mới gõ khi bạn nói. Các mô hình khác hoạt động như Khi hoàn tất."
+        }
+      },
       "typingTool": {
         "title": "Công cụ gõ",
         "description": "Chọn công cụ gõ trên Linux cho phương thức dán trực tiếp. Auto sẽ tự động phát hiện và dùng công cụ tốt nhất có sẵn cho hệ thống của bạn.",

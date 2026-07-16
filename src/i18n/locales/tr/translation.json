@@ -321,6 +321,24 @@
         },
         "externalScriptPlaceholder": "/dosya/yolu/betik.sh"
       },
+      "pasteTiming": {
+        "title": "Yapıştırma Zamanlaması",
+        "description": "Metnin odaktaki uygulamaya ne zaman gönderileceği. Bittiğinde: kısayol tuşunu bıraktıktan sonra tüm transkripsiyon gelir. Canlı: model her kelimeyi kesinleştirdikçe yazılır, duyduğunuzun bir kelime gerisinden. Canlı mod, akış destekli bir model gerektirir ve her zaman doğrudan yazar; pano üzerinden yapıştırma yöntemini yok sayar.",
+        "options": {
+          "onFinish": "Bittiğinde",
+          "live": "Canlı (konuşurken)"
+        },
+        "liveWarning": {
+          "title": "Canlı yapıştırmada:",
+          "postProcessing": "AI son işleme, transkripsiyonun tamamını yeniden yazar; bu nedenle zaten yazılmış kelimelere uygulanamaz. Sonucu atılacaktır — ikisinden birini kapatın.",
+          "pasteClipboard": "Akış hâlindeki kelimeler, Yapıştırma Yönteminiz yok sayılarak doğrudan yazılır; çünkü her kelimede panoya yazmak kopyaladığınız içeriği yok ederdi. Yapıştırma Yönteminizi yalnızca son kelime kullanır.",
+          "pasteExternalScript": "Akış hâlindeki kelimeler, harici betiğinizden geçmek yerine doğrudan yazılır. Betiği yalnızca son kelime çalıştırır.",
+          "pasteNone": "Yapıştırma Yöntemi Yok olduğundan hiçbir yere hiçbir şey yazılmaz. Başka bir Yapıştırma Yöntemi seçene kadar canlı yapıştırmanın hiçbir etkisi olmaz.",
+          "lastWord": "Son kelime siz konuşurken değil, kısayol tuşunu bıraktığınızda gelir — model onu henüz kesinleştirmemiştir.",
+          "cancel": "İptal etmek, zaten yazılmış kelimeleri artık kaldırmaz.",
+          "streamingOnly": "Yalnızca akış destekli modeller siz konuşurken yazar. Diğer modeller Bittiğinde gibi davranır."
+        }
+      },
       "typingTool": {
         "title": "Yazma Aracı",
         "description": "Doğrudan yapıştırma yöntemi için hangi Linux yazma aracının kullanılacağını seçin. Otomatik seçeneği, sisteminiz için mevcut en iyi aracı algılar ve kullanır.",
