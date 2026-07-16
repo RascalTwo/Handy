@@ -15,7 +15,7 @@ use crate::utils::{
     self, show_processing_overlay, show_recording_overlay, show_transcribing_overlay,
 };
 use crate::TranscriptionCoordinator;
-use log::{debug, error, warn};
+use log::{debug, error, info, warn};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -81,6 +81,40 @@ const CANCELLATION_POLL_INTERVAL: Duration = Duration::from_millis(25);
 /// Bumped per recording session, so a late paste from an earlier session
 /// doesn't reset the tray or hide the overlay of a newer one.
 static RECORDING_SESSION: AtomicU64 = AtomicU64::new(0);
+
+/// The part of `final_text` that live injection has not already typed.
+///
+/// Returns `None` when there is nothing left to paste, including the case where
+/// live injection typed text that `final_text` then contradicted — pasting the
+/// whole thing there would duplicate the utterance, so the already-typed text is
+/// left standing instead. Post-processing that rewrites the transcript
+/// wholesale (an LLM prompt) is the way to provoke that; it is fundamentally at
+/// odds with having already typed the un-rewritten words.
+///
+/// With live injection off, `live_typed_text()` is empty and this is a no-op
+/// that returns `final_text` unchanged.
+fn remaining_after_live(final_text: &str, tm: &TranscriptionManager) -> Option<String> {
+    let typed = tm.live_typed_text();
+    if typed.is_empty() {
+        return (!final_text.is_empty()).then(|| final_text.to_string());
+    }
+
+    match final_text.strip_prefix(typed.as_str()) {
+        Some(rest) if rest.trim().is_empty() => {
+            info!("live paste: already typed the full transcription; nothing left to paste");
+            None
+        }
+        Some(rest) => Some(rest.to_string()),
+        None => {
+            warn!(
+                "live paste: final text {:?} does not extend the live-typed text {:?}; \
+                 leaving the live text as-is rather than pasting a duplicate",
+                final_text, typed
+            );
+            None
+        }
+    }
+}
 
 #[derive(Clone, serde::Serialize)]
 struct RecordingErrorEvent {
@@ -503,6 +537,10 @@ impl ShortcutAction for TranscribeAction {
         } else {
             VadPolicy::Offline
         };
+        // Unconditional: a non-streaming utterance must not inherit the previous
+        // one's live-typed text, or its final paste gets measured against text
+        // that isn't there and comes out empty.
+        tm.reset_live_typed();
         // Before the model loads, whether it keeps its accuracy on long audio
         // is unknown, so assume not: the worker decides again with the loaded
         // model, and a wrong guess costs only an idle worker.
@@ -807,7 +845,18 @@ impl ShortcutAction for TranscribeAction {
                             } else {
                                 let ah_clone = ah.clone();
                                 let paste_time = Instant::now();
-                                let final_text = processed.final_text;
+                                // Live injection already typed a prefix of this
+                                // text; send only what it has not sent yet.
+                                // History above still records the full text.
+                                let final_text =
+                                    match remaining_after_live(&processed.final_text, &tm) {
+                                        Some(text) => text,
+                                        None => {
+                                            utils::hide_recording_overlay(&ah);
+                                            set_tray_state(&ah, TrayIconState::Idle);
+                                            return;
+                                        }
+                                    };
                                 let rm_for_paste = Arc::clone(&rm);
                                 // Taken before the paste thread exists, and so
                                 // before the next session can start.

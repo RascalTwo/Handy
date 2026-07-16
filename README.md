@@ -1,5 +1,19 @@
 # Handy
 
+> **This is a fork.** It adds **Live paste** — transcribed words are typed into
+> the focused app as you speak, instead of all at once when you release the
+> hotkey. Everything below is upstream's README and still applies.
+>
+> **→ [What's different, how to build it, and how to run it alongside stock
+> Handy](./FORK.md)**
+>
+> No prebuilt binaries — you build it yourself. If you already run stock Handy,
+> read FORK.md first: both apps default to the same `option+space` global
+> shortcut and will fight over it.
+>
+> Unofficial fork of [cjpais/Handy](https://github.com/cjpais/Handy) — not
+> affiliated with or endorsed by cjpais. Please report bugs here, not upstream.
+
 [![Discord](https://img.shields.io/badge/Discord-%235865F2.svg?style=for-the-badge&logo=discord&logoColor=white)](https://discord.com/invite/WVBeWsNXK4)
 
 **A free, open source, and extensible speech-to-text application that works completely offline.**
