@@ -75,8 +75,15 @@ pub struct TranscriptionCoordinator {
     tx: Sender<Command>,
 }
 
+/// Every binding that records and transcribes, and so must go through the
+/// coordinator rather than the plain press/release path in `handle_shortcut_event`.
+///
+/// Miss one and it silently loses both push-to-talk/toggle handling (the plain
+/// path is hold-to-talk by construction) and the lifecycle serialisation this
+/// actor exists to provide. Any new `TranscribeAction` in `ACTION_MAP` belongs
+/// here too.
 pub fn is_transcribe_binding(id: &str) -> bool {
-    id == "transcribe" || id == "transcribe_with_post_process"
+    id == "transcribe" || id == "transcribe_live" || id == "transcribe_with_post_process"
 }
 
 impl TranscriptionCoordinator {
@@ -284,6 +291,48 @@ fn stop(app: &AppHandle, stage: &mut Stage, binding_id: &str, hotkey_string: &st
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A binding that records but isn't recognised here never reaches the
+    /// coordinator: `handle_shortcut_event` drops it into the plain
+    /// press-starts / release-stops path, which is hold-to-talk regardless of
+    /// the `push_to_talk` setting, and skips this actor's serialisation. That
+    /// bug shipped once — the live-paste binding was added to `ACTION_MAP` and
+    /// the default bindings, but not here.
+    #[test]
+    fn every_recording_binding_reaches_the_coordinator() {
+        for id in [
+            "transcribe",
+            "transcribe_live",
+            "transcribe_with_post_process",
+        ] {
+            assert!(
+                is_transcribe_binding(id),
+                "'{id}' records but would bypass the coordinator: no toggle support, no serialisation"
+            );
+        }
+
+        // Non-recording bindings must keep using the plain path.
+        assert!(!is_transcribe_binding("cancel"));
+        assert!(!is_transcribe_binding("test"));
+    }
+
+    /// The live binding must toggle like any other transcribe binding: with
+    /// push-to-talk off, a release is a passthrough, not a deferred stop.
+    #[test]
+    fn live_binding_follows_the_same_ptt_rules_as_transcribe() {
+        for id in ["transcribe", "transcribe_live"] {
+            assert_eq!(
+                classify_ptt_event(None, false, false, id, Some(id)),
+                PttAction::Passthrough,
+                "'{id}' with push-to-talk off should not defer its release"
+            );
+            assert_eq!(
+                classify_ptt_event(None, false, true, id, Some(id)),
+                PttAction::DeferRelease,
+                "'{id}' with push-to-talk on should defer its release"
+            );
+        }
+    }
 
     #[test]
     fn push_to_talk_release_while_recording_defers_release() {

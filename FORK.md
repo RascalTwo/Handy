@@ -72,27 +72,104 @@ There are no prebuilt binaries and there won't be. Upstream's
 
 ```sh
 bun install
-bun run tauri build
+bunx tauri build --bundles app
 ```
+
+`--bundles app` skips the `.dmg`, which only exists to hand the app to someone
+else — you're building it yourself, so drag `Handy (RascalTwo).app` out of
+`src-tauri/target/release/bundle/macos/` and skip a slow step. It also dodges a
+real failure mode: `bundle_dmg.sh` mounts a temporary volume, and if a previous
+build left one behind, the next build dies with an unhelpful
+`error running bundle_dmg.sh`. If you hit that, `ls /Volumes/` for a stray
+`dmg.XXXXXX` and `hdiutil detach /Volumes/dmg.XXXXXX -force`.
+
+(Note the missing `--`. `bun run tauri build -- --bundles app` forwards
+`--bundles` to *cargo* instead of tauri, which fails with a confusing
+"a similar argument exists: '--benches'".)
+
+**Do the certificate step below first.** `tauri.conf.json` names a signing
+identity, so building without it fails at the signing step rather than falling
+back to ad-hoc. That's deliberate — the fallback is a worse outcome than a clear
+failure, for the reason explained there. The certificate's Common Name must match
+`signingIdentity` in `tauri.conf.json` exactly; the command below already does.
 
 That produces `Handy (RascalTwo).app` and a `.dmg` under
 `src-tauri/target/release/bundle/`. Expect a slow first build — it compiles
 whisper.cpp/ggml from source and the release profile uses `lto = true` with
 `codegen-units = 1`.
 
-**No Apple Developer account is needed.** `tauri.conf.json` sets
-`signingIdentity: "-"` (ad-hoc), and a locally compiled app is never quarantined,
-so there's no Gatekeeper prompt and no `xattr` incantation.
+**No Apple Developer account is needed.** A locally compiled app is never
+quarantined, so there's no Gatekeeper prompt and no `xattr` incantation.
 
-Handy needs **Accessibility** permission to inject keystrokes. macOS keys that
-grant to the app's code signature, and an ad-hoc signature changes on every
-rebuild — so a rebuild can silently invalidate the grant, and shortcuts or
-pasting stop working until you remove and re-add the app in System Settings →
-Privacy & Security → Accessibility. A free self-signed Code Signing certificate
-from Keychain Access (Certificate Assistant → Create a Certificate → Code
-Signing), pointed at by `signingIdentity`, gives a stable identity across
-rebuilds and makes this go away. Worth doing before you grant Accessibility even
-once.
+### You need a code-signing certificate first (a free, self-signed one)
+
+`tauri.conf.json` sets `signingIdentity: "Handy Fork Local Signing"` rather than
+upstream's `"-"` (ad-hoc). **Ad-hoc signing is a trap for anything needing
+Accessibility**, and it will waste your afternoon if you skip this.
+
+Handy injects keystrokes, which requires **Accessibility** permission. macOS pins
+that grant to the app's *designated requirement*. Ad-hoc signing produces:
+
+    designated => cdhash H"68d591e1a01c5439325bfb53bfdcfbb64441b8f2"
+
+— pinned to that exact binary. Every rebuild changes the cdhash, so the stored
+grant stops matching. The failure is nasty: System Settings still shows the app
+ticked, the app insists permission is missing, and toggling the checkbox does
+nothing because it reuses the same stale record. Signing with a certificate
+instead produces:
+
+    designated => identifier "com.rascaltwo.handy" and certificate leaf = H"..."
+
+— pinned to the identity, which rebuilds don't change. Grant once, done.
+
+Create one (free, no Apple account, ~1 minute):
+
+```sh
+security create-keychain -p handy-local-signing handy-signing.keychain
+security unlock-keychain -p handy-local-signing handy-signing.keychain
+security set-keychain-settings handy-signing.keychain   # no auto-lock
+
+openssl req -x509 -newkey rsa:2048 -sha256 -days 3650 -nodes \
+  -keyout handy-sign.key -out handy-sign.crt \
+  -subj "/CN=Handy Fork Local Signing" \
+  -addext "basicConstraints=critical,CA:false" \
+  -addext "keyUsage=critical,digitalSignature" \
+  -addext "extendedKeyUsage=critical,codeSigning"
+
+# -certpbe/-keypbe/-macalg are required: OpenSSL 3 defaults to algorithms
+# macOS's Security framework can't read ("MAC verification failed").
+openssl pkcs12 -export -out handy-sign.p12 \
+  -inkey handy-sign.key -in handy-sign.crt -passout pass:handy-local-signing \
+  -certpbe PBE-SHA1-3DES -keypbe PBE-SHA1-3DES -macalg sha1
+
+security import handy-sign.p12 -k handy-signing.keychain \
+  -P handy-local-signing -T /usr/bin/codesign -A
+security set-key-partition-list -S apple-tool:,apple:,codesign: \
+  -s -k handy-local-signing handy-signing.keychain
+security list-keychains -d user -s login.keychain-db handy-signing.keychain
+```
+
+`security find-identity -p codesigning` should now list it. It reports
+`CSSMERR_TP_NOT_TRUSTED` — that's expected and harmless; `codesign` doesn't
+require the certificate to be trusted, only to exist. (`find-identity -v` hides
+it for exactly that reason.)
+
+**A dedicated keychain locks on reboot.** If a build fails to sign, unlock it:
+
+```sh
+security unlock-keychain -p handy-local-signing handy-signing.keychain
+```
+
+Prefer no unlock step? Import into `login.keychain-db` instead — it unlocks at
+login, at the cost of a one-time "codesign wants to access key" prompt.
+
+If you've already been bitten and the grant is wedged, delete the stale record
+rather than toggling the checkbox:
+
+```sh
+tccutil reset Accessibility com.rascaltwo.handy
+tccutil reset Microphone com.rascaltwo.handy
+```
 
 ## Running it alongside stock Handy
 
