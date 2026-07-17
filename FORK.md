@@ -341,13 +341,3 @@ fails quietly:
    coordinator's lifecycle serialisation. That bug shipped here once.
 
 `every_recording_binding_reaches_the_coordinator` pins #3.
-
-## Trademark note
-
-Upstream's README is explicit that the Handy **name, logo, icon, and brand assets
-are not open-source**, and that unofficial forks must use their own branding and
-must not imply endorsement or affiliation. This fork currently reuses the name and
-upstream's icons, which is fine for a build-it-yourself fork but would need
-renaming and re-iconing before anything resembling a distributed release.
-
-This fork is not affiliated with or endorsed by cjpais.
