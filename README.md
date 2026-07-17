@@ -10,9 +10,6 @@
 > No prebuilt binaries — you build it yourself. If you already run stock Handy,
 > read FORK.md first: both apps default to the same `option+space` global
 > shortcut and will fight over it.
->
-> Unofficial fork of [cjpais/Handy](https://github.com/cjpais/Handy) — not
-> affiliated with or endorsed by cjpais. Please report bugs here, not upstream.
 
 [![Discord](https://img.shields.io/badge/Discord-%235865F2.svg?style=for-the-badge&logo=discord&logoColor=white)](https://discord.com/invite/WVBeWsNXK4)
 
