@@ -162,6 +162,10 @@ it for exactly that reason.)
 security unlock-keychain -p handy-local-signing handy-signing.keychain
 ```
 
+`scripts/update-from-upstream.sh` does this for you before it builds — codesign
+only fails once the bundle is assembled, so the alternative is finding out at the
+end of a full LTO build.
+
 Prefer no unlock step? Import into `login.keychain-db` instead — it unlocks at
 login, at the cost of a one-time "codesign wants to access key" prompt.
 
@@ -296,15 +300,25 @@ to answer, which is the question you need answered every time upstream refactors
 something underneath it.
 
 ```sh
-git remote add upstream https://github.com/cjpais/Handy.git   # one time
-git fetch upstream --tags
+scripts/update-from-upstream.sh          # onto the newest upstream tag
+scripts/update-from-upstream.sh v0.9.6   # or onto a specific one
+```
 
-git rebase v0.9.4                # or whatever the next release tag is
-# ...resolve, then:
-cd src-tauri && cargo test        # the fork guards live here — see below
-bunx tauri build --bundles app
+It adds the `upstream` remote if missing, fetches, prints which files are about
+to collide, takes a backup branch, and rebases. Then it verifies: the fork
+guards, the typecheck, a release build, and — the one nothing else catches —
+that the bundle really was signed with the fork identity instead of falling back
+to ad-hoc.
+
+It stops short of pushing. That's a force-push, and it's yours to make:
+
+```sh
 git push --force-with-lease
 ```
+
+**If it stops on a conflict**, resolve it, `git rebase --continue`, then re-run
+the script. It notices the rebase is already done and runs the verification
+rather than exiting.
 
 Rebase on **release tags, not `main`.** Tags are tested; `main` is whatever
 landed an hour ago, and you'd be debugging upstream's work-in-progress on top of
@@ -322,6 +336,16 @@ your own.
   signing identity, or updater endpoints revert. **Run the tests after every
   rebase** — that guard and `update_checks_are_off_by_default_in_this_fork` exist
   precisely because nothing at runtime would tell you.
+- **`src/bindings.ts` — the sharpest edge, and the one you won't be warned
+  about.** It's generated, but only by `tauri dev`: the export sits behind
+  `#[cfg(debug_assertions)]` and runs when the app starts, so neither a release
+  build nor a rebase regenerates it. Resolve it by hand — take upstream's shape,
+  then re-add the fork's own keys. Taking upstream's side wholesale still
+  compiles and silently drops them. Worse, the file nets to zero across the
+  fork's commits (one adds `paste_timing`, a later one removes it), so it never
+  appears in the script's "expect conflicts here" list despite conflicting on
+  every commit that touches it. `tsc` catches a dangling reference, not a
+  missing key.
 - **`Cargo.lock`.** Take upstream's wholesale and re-run the build; never
   hand-merge it.
 - **`transcription.rs` / `actions.rs`.** Where the real work is. Both see regular
