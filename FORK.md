@@ -1,7 +1,7 @@
 # What's different in this fork
 
 This is [RascalTwo](https://github.com/RascalTwo)'s fork of
-[cjpais/Handy](https://github.com/cjpais/Handy), branched from **v0.9.3**.
+[cjpais/Handy](https://github.com/cjpais/Handy), branched from **v0.9.6**.
 
 Nothing here is going upstream. Upstream is under a
 [feature freeze](https://github.com/cjpais/Handy/blob/main/.github/PULL_REQUEST_TEMPLATE.md)
@@ -216,9 +216,9 @@ future rebase can't quietly restore upstream's default.
 
 ### Filler-word filtering is why the last word lags
 
-Even with no custom words and post-processing off, `filter_transcription_output`
-strips `um`/`uh`/`ah`/… based on `app_language`, and collapses stutters and double
-spaces. Raw `committed` contains those words; the final text doesn't. So
+Even with no custom words and post-processing off, `remove_filler_words` strips
+`uh`/`uhm`/`hmm`/… and `normalize_transcription_output` collapses stutters and
+double spaces. Raw `committed` contains those words; the final text doesn't. So
 live-typed text is _not_ naively a prefix of the final text.
 
 Handled by typing only **complete words** — everything up to the last whitespace
@@ -233,6 +233,34 @@ The cost is that the trailing word waits for a word boundary. Combined with the
 genuinely uncommitted `tentative` tail, that's why the last word or two arrive on
 hotkey release rather than as you speak. **This is not fixable** — the model
 hasn't decided those words yet.
+
+### Live paste freezes its language evidence, and has to
+
+v0.9.6 split filler removal into two tiers. `uh`/`uhm`/`hmm` are universal, while
+`um`/`ah`/`eh`/`ha` are **gated** on knowing the output language, because `um` is
+a real word in Portuguese and German. When nothing else establishes the language,
+`post_process_transcription_text` falls back to `detect_output_language`, which
+runs `whatlang` over the transcript behind a confidence gate.
+
+That fallback cannot run on the live path. Detection is a function of the whole
+string, so on a growing prefix it resolves _later_ than it does on the final
+text: upstream's own test has `"um ok"` returning no language while a full
+sentence returns `en`. Live paste would type `um` while the prefix is too short
+to detect, then — one word later, once detection succeeds — re-derive a prefix
+with `um` removed, no longer match what it already typed, and hit the divergence
+guard. The feature would go silent mid-sentence, every time, on any setup that
+leaves the language unresolved.
+
+So `live_delta` passes `allow_text_language_detection = false` and reuses the
+evidence the engine resolved before the stream started. The cost is that a gated
+filler can survive in live-typed text when detection would later have caught it;
+`remaining_after_live` sees the mismatch and leaves the live text standing rather
+than pasting a duplicate. An occasional surviving `um` is the price of the
+feature working at all.
+
+`live_paste_keeps_typing_when_text_detection_would_flip_mid_utterance` pins this.
+Flip that `false` to `true` and it fails, showing live paste stopping four words
+in.
 
 ### `committed` really is append-only
 
@@ -279,7 +307,7 @@ mangle the text. Tested.
 | File                                                    | Change                                                                                         |
 | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
 | `src-tauri/src/settings.rs`                             | `transcribe_live` binding default, updater default off                                         |
-| `src-tauri/src/managers/transcription.rs`               | `begin_utterance()`, `live_delta()`, `inject_live_delta()`                                     |
+| `src-tauri/src/managers/transcription.rs`               | `begin_utterance()`, `live_delta()`, `inject_live_delta()`, `allow_text_language_detection`    |
 | `src-tauri/src/clipboard.rs`                            | `paste_raw()` — types text with no trailing space / auto-submit / clipboard write              |
 | `src-tauri/src/actions.rs`                              | `live` flag on `TranscribeAction`, `transcribe_live` in `ACTION_MAP`, `remaining_after_live()` |
 | `src/components/settings/LivePaste.tsx`                 | The live shortcut + its notice                                                                 |
@@ -301,7 +329,7 @@ something underneath it.
 
 ```sh
 scripts/update-from-upstream.sh          # onto the newest upstream tag
-scripts/update-from-upstream.sh v0.9.6   # or onto a specific one
+scripts/update-from-upstream.sh v0.9.7   # or onto a specific one
 ```
 
 It adds the `upstream` remote if missing, fetches, prints which files are about
@@ -324,7 +352,7 @@ Rebase on **release tags, not `main`.** Tags are tested; `main` is whatever
 landed an hour ago, and you'd be debugging upstream's work-in-progress on top of
 your own.
 
-`git log v0.9.4..HEAD` is then always exactly the fork's delta.
+`git log v0.9.6..HEAD` is then always exactly the fork's delta.
 
 ### The conflicts you will actually hit
 
