@@ -866,7 +866,7 @@ impl ShortcutAction for TranscribeAction {
                                         Some(text) => text,
                                         None => {
                                             utils::hide_recording_overlay(&ah);
-                                            change_tray_icon(&ah, TrayIconState::Idle);
+                                            set_tray_state(&ah, TrayIconState::Idle);
                                             return;
                                         }
                                     };

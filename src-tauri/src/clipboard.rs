@@ -777,17 +777,9 @@ pub fn paste_raw(text: &str, app_handle: &AppHandle) -> Result<(), String> {
         return Ok(());
     }
 
-    let enigo_state = app_handle
-        .try_state::<EnigoState>()
-        .ok_or("Enigo state not initialized")?;
-    let mut enigo = enigo_state
-        .0
-        .lock()
-        .map_err(|e| format!("Failed to lock Enigo: {}", e))?;
-
     paste_direct(
-        &mut enigo,
         text,
+        app_handle,
         #[cfg(target_os = "linux")]
         settings.typing_tool,
     )
