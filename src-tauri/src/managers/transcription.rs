@@ -1020,11 +1020,14 @@ impl TranscriptionManager {
                                         &languages,
                                     );
                                     // Only the committed prefix is ever typed, and deriving the delta
-                                    // re-runs the output filter — skip that on tentative-only
-                                    // churn, which is most updates. It types the script-converted
-                                    // text, so what lands matches the preview and the final paste.
+                                    // re-runs the output filter (which also converts the script) —
+                                    // skip that on tentative-only churn, which is most updates.
                                     if update.committed_changed {
-                                        self.inject_live_delta(&committed);
+                                        self.inject_live_delta(
+                                            &text.committed,
+                                            &output_language,
+                                            &languages,
+                                        );
                                     }
                                     self.emit_stream_text(&committed, &tentative);
                                 }
@@ -1166,6 +1169,7 @@ impl TranscriptionManager {
             false,
             &finalized.output_language,
             &finalized.supported_languages,
+            true,
         );
 
         self.maybe_unload_immediately("streaming transcription");
@@ -1213,7 +1217,12 @@ impl TranscriptionManager {
     }
 
     /// Type newly committed words into the focused app mid-recording.
-    fn inject_live_delta(&self, committed: &str) {
+    fn inject_live_delta(
+        &self,
+        committed: &str,
+        output_language: &OutputLanguageEvidence,
+        supported_languages: &[String],
+    ) {
         if !self.live_utterance.load(Ordering::Acquire) {
             return;
         }
@@ -1225,7 +1234,13 @@ impl TranscriptionManager {
         let Ok(mut typed) = self.live_typed.lock() else {
             return;
         };
-        let Some((delta, eligible)) = live_delta(committed, &typed, &settings) else {
+        let Some((delta, eligible)) = live_delta(
+            committed,
+            &typed,
+            &settings,
+            output_language,
+            supported_languages,
+        ) else {
             return;
         };
 
@@ -1580,6 +1595,7 @@ impl TranscriptionManager {
             model_is_whisper,
             &output_language,
             &model_languages,
+            true,
         );
 
         let et = std::time::Instant::now();
@@ -1861,10 +1877,20 @@ fn live_delta(
     committed: &str,
     already_typed: &str,
     settings: &AppSettings,
+    output_language: &OutputLanguageEvidence,
+    supported_languages: &[String],
 ) -> Option<(String, String)> {
     // Complete words only — everything up to the last whitespace.
     let end = committed.rfind(char::is_whitespace)?;
-    let eligible = post_process_transcription_text(committed[..end].to_string(), settings, false);
+    let eligible = post_process_transcription_text(
+        committed[..end].to_string(),
+        settings,
+        false,
+        output_language,
+        supported_languages,
+        // Frozen for the utterance: see post_process_transcription_text.
+        false,
+    );
 
     match eligible.strip_prefix(already_typed) {
         // Committed grew, but not past the last word boundary yet.
@@ -1892,6 +1918,7 @@ fn post_process_transcription_text(
     custom_words_already_prompted: bool,
     output_language: &OutputLanguageEvidence,
     supported_languages: &[String],
+    allow_text_language_detection: bool,
 ) -> String {
     let converts_script = settings.chinese_script != ChineseScript::AsTranscribed;
     fail_open_text_transform(raw, |raw| {
@@ -1899,11 +1926,22 @@ fn post_process_transcription_text(
         // transcribed text itself, constrained to the model's languages. Only
         // consulted when it can change the outcome (built-in gated fillers or
         // Chinese script conversion).
+        //
+        // Live paste passes `allow_text_language_detection = false`. It calls
+        // this on a growing prefix, and detection is a function of the whole
+        // text: "um ok" is unreliable and yields no language, while the longer
+        // sentence it becomes resolves to "en" and starts stripping "um". That
+        // flip retroactively rewrites a prefix live paste has already typed and
+        // cannot recall, so `live_delta` would see its own text diverge and
+        // stop for the rest of the utterance. Freezing the evidence costs an
+        // occasional surviving filler (or, with auto-detect and a Chinese script
+        // set, text typed unconverted); detecting costs the feature.
         let output_language = match output_language {
             OutputLanguageEvidence::Unknown
-                if converts_script
-                    || (settings.filler_word_removal_enabled
-                        && settings.custom_filler_words.is_none()) =>
+                if allow_text_language_detection
+                    && (converts_script
+                        || (settings.filler_word_removal_enabled
+                            && settings.custom_filler_words.is_none())) =>
             {
                 match detect_output_language(&raw, supported_languages) {
                     Some(language) => {
@@ -2481,6 +2519,7 @@ mod tests {
             false,
             &evidence,
             &supported,
+            true,
         );
 
         assert_eq!(
@@ -2523,6 +2562,7 @@ mod tests {
             false,
             &evidence,
             &languages(&["en", "pt"]),
+            true,
         );
 
         assert_eq!(evidence, OutputLanguageEvidence::Unknown);
@@ -2543,6 +2583,7 @@ mod tests {
             false,
             &OutputLanguageEvidence::Unknown,
             &languages(&["en", "pt", "es", "de"]),
+            true,
         );
 
         assert_eq!(
@@ -2564,6 +2605,7 @@ mod tests {
             false,
             &OutputLanguageEvidence::Unknown,
             &languages(&["en", "pt", "es", "de"]),
+            true,
         );
 
         assert_eq!(
@@ -2650,6 +2692,7 @@ mod tests {
             false,
             &evidence,
             &supported,
+            true,
         );
         assert_eq!(result, "eu vi um carro");
     }
@@ -2719,12 +2762,18 @@ mod tests {
         assert_eq!(plan.target_language, None);
     }
 
-    /// English so `filter_transcription_output` uses the stock filler list —
+    /// English so `remove_filler_words` uses the stock filler list —
     /// live paste has to agree with the filter that runs on the final text.
     fn live_paste_settings() -> AppSettings {
         let mut settings = crate::settings::get_default_settings();
         settings.app_language = "en-US".to_string();
         settings
+    }
+
+    /// The live path is always handed already-resolved evidence, never `Unknown`
+    /// here — these tests assert the English filler list applies.
+    fn english() -> OutputLanguageEvidence {
+        OutputLanguageEvidence::UserSelected("en".to_string())
     }
 
     /// Drive `live_delta` over a growing `committed`, as the stream worker does,
@@ -2734,7 +2783,7 @@ mod tests {
         let mut typed = String::new();
         let mut deltas = Vec::new();
         for update in updates {
-            if let Some((delta, next)) = live_delta(update, &typed, &settings) {
+            if let Some((delta, next)) = live_delta(update, &typed, &settings, &english(), &[]) {
                 deltas.push(delta);
                 typed = next;
             }
@@ -2790,7 +2839,14 @@ mod tests {
         let spoken = "hello um world today";
         let (_, typed) = type_along(&["hello ", "hello um ", "hello um world "]);
 
-        let final_text = post_process_transcription_text(spoken.to_string(), &settings, false);
+        let final_text = post_process_transcription_text(
+            spoken.to_string(),
+            &settings,
+            false,
+            &english(),
+            &[],
+            true,
+        );
 
         assert_eq!(typed, "hello world");
         assert!(
@@ -2800,13 +2856,61 @@ mod tests {
         assert_eq!(final_text.strip_prefix(&typed), Some(" today"));
     }
 
+    /// Live paste freezes its language evidence for the utterance. Text-based
+    /// detection reads the whole string, so on a growing prefix it resolves
+    /// later than it does on the final text: "um" is typed while the prefix is
+    /// too short to detect, then becomes strippable once it isn't. `live_delta`
+    /// would see its own typed text stop being a prefix, log a divergence, and
+    /// type nothing for the rest of the utterance. Flip the `false` in
+    /// `live_delta` to `true` and this test fails.
+    #[test]
+    fn live_paste_keeps_typing_when_text_detection_would_flip_mid_utterance() {
+        let settings = live_paste_settings();
+        let supported = languages(&["en", "pt"]);
+        let long = "um so the weather forecast said it would probably rain \
+                    throughout the whole weekend";
+
+        // The flip is real, not hypothetical.
+        assert_eq!(detect_output_language("um so ", &supported), None);
+        assert_eq!(
+            detect_output_language(long, &supported).as_deref(),
+            Some("en")
+        );
+
+        // "um" is gated, so unknown evidence keeps it and known evidence drops
+        // it — which is exactly what makes the flip rewrite typed text.
+        let mut typed = String::new();
+        let mut committed = String::new();
+        for word in long.split_whitespace() {
+            committed.push_str(word);
+            committed.push(' ');
+            if let Some((_, next)) = live_delta(
+                &committed,
+                &typed,
+                &settings,
+                &OutputLanguageEvidence::Unknown,
+                &supported,
+            ) {
+                typed = next;
+            }
+        }
+
+        assert_eq!(typed, long.split_whitespace().collect::<Vec<_>>().join(" "));
+    }
+
     #[test]
     fn live_delta_refuses_to_type_when_committed_contradicts_itself() {
         let settings = live_paste_settings();
 
         // "hello world" was typed; the model now claims it said "hello word".
         assert_eq!(
-            live_delta("hello word today ", "hello world", &settings),
+            live_delta(
+                "hello word today ",
+                "hello world",
+                &settings,
+                &english(),
+                &[]
+            ),
             None
         );
     }
@@ -2823,13 +2927,16 @@ mod tests {
 
         // A new utterance's text does not extend the previous one's, so nothing
         // can be typed and the final paste would find no prefix to subtract.
-        assert_eq!(live_delta("goodbye there now ", stale, &settings), None);
+        assert_eq!(
+            live_delta("goodbye there now ", stale, &settings, &english(), &[]),
+            None
+        );
         assert_eq!("goodbye there now".strip_prefix(stale), None);
 
         // Cleared, the same utterance behaves normally. All three words are
         // eligible here — the trailing space is the boundary proving "now" whole.
         assert_eq!(
-            live_delta("goodbye there now ", "", &settings),
+            live_delta("goodbye there now ", "", &settings, &english(), &[]),
             Some((
                 "goodbye there now".to_string(),
                 "goodbye there now".to_string()
