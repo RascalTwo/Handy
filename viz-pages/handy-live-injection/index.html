@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Live paste — words land while you're still talking</title>
+<meta name="viz:posture" content="public">
+<meta name="viz:listed" content="listed">
+<meta name="viz:title" content="Handy fork — live paste">
+<meta name="viz:description" content="A third transcribe shortcut in RascalTwo's fork of Handy: each committed word is typed into the focused app as the model commits it, instead of pasting the whole transcription on release.">
+<!-- viz:card=self — THIS page IS its own 1200×630 OG card; verify.ts --og clips .og-card straight to og.auto.png. -->
+<meta name="viz:card" content="self">
+<!-- viz:scaffold — which built-in scaffold generated this page. NOT "what I forked from"
+     (that is --from, which can start from any viz). A --from fork inherits this, correctly:
+     a fork of a deck is still a deck. Keep the line. -->
+<meta name="viz:scaffold" content="poster-dive">
+<link rel="stylesheet" href="/_kit/viz-kit.css">
+<link rel="stylesheet" href="/_kit/viz-og.css">
+<link rel="stylesheet" href="/_kit/poster.css">
+<style>
+  /* Mechanics live in /_kit/poster.css; card anatomy in /_kit/viz-og.css.
+     Only what differs for this card lives here. --live / --stock are the two
+     series on the card figure, and the dive reuses them so a bar on the card
+     and a word in the walkthrough are the same colour. */
+  :root{ --live:var(--c5); --stock:var(--c4); }
+
+  /* overflow-x on BODY only — on <html> it forces overflow-y off `visible` and
+     silently breaks scrollTo / verify.ts --full. */
+  html,body{ margin:0; background:var(--bg); }
+  body{ overflow-x:hidden; }
+
+  /* ── card: a wider figure panel than the kit default, and a shorter title ── */
+  .og-card > .left{ width:600px; padding:50px 14px 50px 66px; }
+  .og-card > .right{ padding:50px 42px 50px 4px; }
+  .og-card .panel{ width:498px; }
+  .og-card .title{ font-size:58px; }
+  .og-card .title .hl{ color:var(--live); }
+  .essence{ font-size:26px; margin-top:22px; max-width:500px; }
+  .og-card .sub{ margin-top:14px; font-size:15.5px; max-width:500px; }
+  .chips{ margin-top:22px; }
+  .chip .tk{ background:var(--live); box-shadow:0 0 6px color-mix(in srgb, var(--live) 60%, transparent); }
+  .cardlegend{ display:flex; flex-wrap:wrap; gap:6px 16px; margin-top:8px;
+               font-family:var(--mono); font-size:10.5px; color:var(--muted); }
+  .cardlegend i{ font-style:normal; display:inline-flex; align-items:center; gap:6px; }
+  .cardlegend .sw{ width:12px; height:7px; border-radius:2px; display:inline-block; }
+  .cardlegend .rule{ width:12px; height:0; border-top:2px dashed var(--warn); display:inline-block; }
+  .foot .stat .d{ max-width:210px; }
+
+  .scroll-cue{ text-align:center; color:var(--muted); font-family:var(--mono);
+               font-size:12px; letter-spacing:.16em; padding:26px 0 0; }
+
+  /* ── the dive ── */
+  .dive{ max-width:820px; margin:0 auto; padding:26px 28px 90px; }
+  .dive h2{ font-size:12.5px; text-transform:uppercase; letter-spacing:.16em;
+            color:var(--live); margin:40px 0 12px; font-family:var(--mono); }
+  .dive h2:first-of-type{ margin-top:18px; }
+  .dive p{ font-size:16.5px; line-height:1.65; color:var(--text); margin:0 0 14px; }
+  .dive p.m{ color:var(--muted); }
+  .dive li{ font-size:16px; line-height:1.6; margin-bottom:9px; }
+  .dive b{ color:#fff; }
+  .dive code{ font-family:var(--mono); font-size:.9em; color:var(--live); }
+  pre{ background:var(--panel); border:1px solid var(--border); border-radius:11px;
+       padding:15px 17px; overflow-x:auto; font-family:var(--mono); font-size:13px;
+       line-height:1.6; color:var(--text); margin:0 0 16px; }
+  pre .c{ color:var(--faint); }
+  pre .k{ color:var(--warn); }
+  .callout{ border-left:3px solid var(--warn);
+            background:color-mix(in srgb, var(--warn) 8%, transparent);
+            border-radius:0 10px 10px 0; padding:14px 18px; margin:0 0 16px;
+            font-size:15.5px; line-height:1.6; }
+  .callout b{ color:var(--warn); }
+
+  /* three shortcuts, contrasted */
+  .vs{ display:grid; grid-template-columns:repeat(3,1fr); gap:11px; margin:0 0 18px; }
+  .vs .k{ border:1px solid var(--border); border-radius:12px; padding:12px 14px;
+          background:color-mix(in srgb, var(--panel) 70%, transparent); }
+  .vs .k .key{ font-family:var(--mono); font-size:12.5px; margin-bottom:6px; color:var(--muted); }
+  .vs .k .nm{ font-size:14.5px; font-weight:600; margin-bottom:6px; }
+  .vs .k p{ font-size:13.5px; line-height:1.5; margin:0; color:var(--muted); }
+  .vs .a{ border-top:2px solid var(--stock); } .vs .a .nm{ color:var(--stock); }
+  .vs .b{ border-top:2px solid var(--live); }  .vs .b .nm{ color:var(--live); }
+  .vs .c{ border-top:2px solid var(--faint); } .vs .c .nm{ color:var(--muted); }
+
+  /* ── the stepper figure ── */
+  .fig{ border:1px solid var(--border); border-radius:14px; background:var(--panel);
+        padding:18px 20px 16px; margin:0 0 16px; }
+  .fig .stage{ background:#0b0f16; border:1px solid var(--border); border-radius:11px;
+               padding:14px 16px; font-family:var(--mono); font-size:13.5px; }
+  .row{ display:grid; grid-template-columns:132px 1fr; gap:12px; align-items:start;
+        padding:7px 0; border-bottom:1px dashed color-mix(in srgb, var(--border) 70%, transparent); }
+  .row:last-child{ border-bottom:0; }
+  .row .lbl{ font-size:10.5px; letter-spacing:.09em; color:var(--faint); padding-top:3px; }
+  .row .val{ line-height:1.6; word-break:break-word; min-height:21px; }
+  .cm{ color:var(--text); }
+  .tv{ color:var(--faint); font-style:italic; }
+  .el{ color:var(--live); }
+  .drop{ color:var(--danger); text-decoration:line-through; opacity:.75; }
+  .none{ color:var(--faint); }
+  .delta{ display:inline-block; background:color-mix(in srgb, var(--live) 18%, transparent);
+          border:1px solid color-mix(in srgb, var(--live) 45%, transparent);
+          border-radius:5px; padding:1px 7px; color:#fff; white-space:pre; }
+  .delta.final{ background:color-mix(in srgb, var(--stock) 18%, transparent);
+                border-color:color-mix(in srgb, var(--stock) 50%, transparent); }
+  .doc{ background:#11161f; border:1px solid var(--border); border-radius:7px;
+        padding:7px 10px; color:#fff; }
+  .doc .caret{ display:inline-block; width:7px; height:15px; vertical-align:-3px;
+               background:var(--live); margin-left:1px; }
+  .stamp{ display:flex; align-items:center; justify-content:space-between;
+          font-size:10.5px; letter-spacing:.11em; margin-bottom:8px; }
+  .fig .lede{ font-size:15px; line-height:1.6; color:var(--text); margin:14px 0 0; min-height:72px; }
+  .fig .lede b{ color:#fff; }
+  .ctrl{ display:flex; align-items:center; gap:9px; margin-top:12px; }
+  .ctrl button{ font-family:var(--mono); font-size:13px; color:var(--text); background:#0b0f16;
+                border:1px solid var(--border); border-radius:8px; padding:7px 13px; cursor:pointer; }
+  .ctrl button:hover{ border-color:var(--live); color:#fff; }
+  .ctrl .pos{ font-family:var(--mono); font-size:12.5px; color:var(--muted); margin-left:4px; }
+  .ctrl .hint{ margin-left:auto; font-family:var(--mono); font-size:11.5px; color:var(--faint); }
+
+  .files{ width:100%; border-collapse:collapse; margin:0 0 18px; font-size:14px; }
+  .files th{ text-align:left; font-family:var(--mono); font-size:10.5px; letter-spacing:.1em;
+             color:var(--faint); text-transform:uppercase; padding:0 12px 7px 0;
+             border-bottom:1px solid var(--border); }
+  .files td{ padding:9px 12px 9px 0; border-bottom:1px solid color-mix(in srgb, var(--border) 55%, transparent);
+             vertical-align:top; line-height:1.5; color:var(--muted); }
+  .files td code{ color:var(--live); }
+
+  .foot-note{ margin-top:50px; padding-top:22px; border-top:1px solid var(--border);
+              color:var(--muted); font-size:13.5px; font-family:var(--mono); line-height:1.7; }
+  .foot-note a{ color:var(--accent); text-decoration:none; }
+  .foot-note a:hover{ text-decoration:underline; }
+</style>
+</head>
+<body class="og-poster og-poster-dive">
+
+<div id="fit">
+  <div class="og-card" data-viz-id="poster-card" data-label="live paste poster card">
+    <div class="frame"></div>
+
+    <div class="left">
+      <div class="eyebrow"><span class="dot"></span>FORK · HANDY · LIVE PASTE</div>
+      <h1 class="title">Words land<br>while you're<br>still <span class="hl">talking.</span></h1>
+      <p class="essence">A third transcribe shortcut. Every word the model <b>commits</b> is typed into the focused app the moment it commits.</p>
+      <p class="sub">Stock Handy holds the whole transcription until you let go of the key. Upstream already streams partial text — it just renders it in an overlay. This sends the append-only half to your cursor instead.</p>
+      <div class="chips">
+        <span class="chip"><span class="tk"></span>ctrl+option+space</span>
+        <span class="chip">the shortcut <i>is</i> the mode</span>
+      </div>
+    </div>
+
+    <div class="right">
+      <div class="panel" data-viz-id="arrival-panel" data-label="when each word reaches your document">
+        <div class="panel-cap">
+          <span class="t">When each word reaches your document</span>
+          <span class="s">SCHEMATIC · 7 WORDS · 3.6s</span>
+        </div>
+        <svg class="graph" id="card-chart" viewBox="0 0 460 310" role="img"
+             aria-label="Bar chart: each spoken word against the time it appears in the focused app, live paste versus stock paste-on-release."></svg>
+        <div class="cardlegend">
+          <i><span class="sw" style="background:var(--live)"></span>LIVE — in your document from here on</i>
+          <i><span class="sw" style="background:var(--stock)"></span>STOCK — all seven, at the final paste</i>
+          <i><span class="rule"></span>HOTKEY RELEASED</i>
+        </div>
+        <div class="foot">
+          <div class="stat good"><div class="n">0</div><div class="l">divergences</div>
+            <div class="d">78 revisions, 2835 frames, 1237 characters — one real session, including an 87-second utterance.</div></div>
+          <div class="stat warn"><div class="n">1 word</div><div class="l">always held back</div>
+            <div class="d">The trailing word can't be filtered until a whitespace boundary proves it finished.</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="scroll-cue">↓&nbsp;&nbsp;HOW IT ACTUALLY WORKS</div>
+
+<article class="dive">
+
+  <h2>What this is</h2>
+  <p>This is <a href="https://github.com/RascalTwo/Handy">RascalTwo's fork</a> of <a href="https://github.com/cjpais/Handy">Handy</a>, a local speech-to-text app for macOS. It branches from <b>v0.9.6</b>, and the whole delta is a short stack of commits on that tag — <code>git log v0.9.6..HEAD</code> is always exactly what is mine. The headline commit adds one shortcut.</p>
+
+  <div class="vs">
+    <div class="k a">
+      <div class="key">option+space</div>
+      <div class="nm">Transcribe</div>
+      <p>Stock. The whole transcription is pasted when you release the key.</p>
+    </div>
+    <div class="k b">
+      <div class="key">ctrl+option+space</div>
+      <div class="nm">Transcribe Live</div>
+      <p>New. Types each word into the focused app as the model commits it.</p>
+    </div>
+    <div class="k c">
+      <div class="key">option+shift+space</div>
+      <div class="nm">…with Post-Processing</div>
+      <p>Stock, and never live. An LLM rewrites the whole transcript; words already typed can't be un-typed.</p>
+    </div>
+  </div>
+
+  <p>There is <b>no mode setting</b>. The shortcut you press is the mode, exactly as post-processing has no "post-process my main key" toggle. That's not a stylistic choice — it's what makes the one genuinely broken combination unreachable instead of merely warned about. Post-processing rewrites the transcript wholesale, which cannot be reconciled with text already sitting in your document; because the <em>binding</em> decides, the post-processing shortcut simply has no way to be live.</p>
+
+  <h2>Why the patch is small</h2>
+  <p>Upstream already did the hard part. v0.9.0 integrated <a href="https://github.com/handy-computer/transcribe.cpp">transcribe.cpp</a> and does real streaming inference — several updates a second, each carrying a two-part split:</p>
+  <pre><span class="c">// what the stream hands back on every feed()</span>
+StreamText {
+  committed:  <span class="k">"set the um retry"</span>   <span class="c">// append-only. never revised.</span>
+  tentative:  <span class="k">" budg"</span>              <span class="c">// still being reconsidered</span>
+}</pre>
+  <p>Stock Handy renders both halves in the recording overlay and throws them away. This fork types the <code>committed</code> delta into your app and leaves <code>tentative</code> in the overlay where it already lives.</p>
+  <p>That split is the whole reason this is tractable. The thing that normally makes live dictation horrible — the model changing its mind and needing to backspace over what it already typed — <b>does not arise</b>, because <code>committed</code> only ever grows.</p>
+
+  <h2>One utterance, update by update</h2>
+  <p class="m">The spoken sentence is <b>"set the um retry budget to three attempts"</b>. Step through what <code>live_delta()</code> does on each update. Arrow keys work, or use the buttons.</p>
+  <p class="m" style="font-size:14.5px">Every <code>committed</code>, eligible-prefix and delta value below is exactly what the function computes for that input. The wall-clock times are illustrative — commit cadence depends on the model, the backend and the machine.</p>
+
+  <div class="fig" data-viz-id="live-delta-figure" data-label="stepper: live_delta across one utterance">
+    <div class="stage">
+      <div class="stamp"><span id="s-when"></span><span id="s-call"></span></div>
+      <div class="row"><div class="lbl">stream.text()</div><div class="val" id="s-stream"></div></div>
+      <div class="row"><div class="lbl">ELIGIBLE PREFIX<br><span style="opacity:.7">complete words, re-filtered</span></div><div class="val" id="s-elig"></div></div>
+      <div class="row"><div class="lbl">TYPED THIS UPDATE</div><div class="val" id="s-delta"></div></div>
+      <div class="row"><div class="lbl">YOUR DOCUMENT</div><div class="val"><span class="doc" id="s-doc"></span></div></div>
+    </div>
+    <p class="lede" id="s-lede"></p>
+    <div class="ctrl">
+      <button id="s-prev" aria-label="previous step">‹ back</button>
+      <button id="s-play">▶ play</button>
+      <button id="s-next" aria-label="next step">next ›</button>
+      <span class="pos" id="s-pos"></span>
+      <span class="hint">← → arrow keys</span>
+    </div>
+  </div>
+
+  <h2>Complete words only, and why</h2>
+  <p>Even with post-processing off and no custom words, Handy filters its output: <code>remove_filler_words</code> strips <code>uh</code>/<code>uhm</code>/<code>hmm</code>, and <code>normalize_transcription_output</code> collapses stutters and double spaces. Raw <code>committed</code> contains those words. The final text doesn't. So live-typed text is <em>not</em> naively a prefix of the final text — it has to be made into one.</p>
+  <p>Two rules do that. <b>Only complete words are eligible</b> — everything up to the last whitespace in <code>committed</code> — because the filler filter matches on <code>\b</code> word boundaries and can't safely run over a half-streamed word. Let <code>"u"</code> through and it gets typed a moment before the filter learns it was about to become <code>"um"</code> and vanish. And <b>the whole eligible prefix is re-filtered and re-diffed on every update</b>, never each delta in isolation, which is what makes the filter's retroactive edits land: a filler is only droppable once the word after it arrives.</p>
+  <pre><span class="c">// transcription.rs — the entire decision</span>
+let end = committed.rfind(char::is_whitespace)?;
+let eligible = post_process_transcription_text(committed[..end].to_string(), …);
+
+match eligible.strip_prefix(already_typed) {
+    Some("")   =&gt; None,                                <span class="c">// grew, but not past a boundary</span>
+    Some(delta) =&gt; Some((delta.to_string(), eligible)),  <span class="c">// type this</span>
+    None       =&gt; <span class="k">/* diverged — stop */</span> None,
+}</pre>
+  <div class="callout"><b>The cost is one word, permanently.</b> The trailing word waits for a whitespace boundary, and on top of that the genuinely uncommitted <code>tentative</code> tail hasn't been decided at all. That's why the last word or two arrive on release rather than as you speak. It is not a bug to be fixed later — the model hasn't chosen those words yet.</div>
+
+  <h2>"Append-only" is a guarantee, not an observation</h2>
+  <p>The whole design rests on <code>committed</code> never contradicting itself, so it's worth saying where that comes from. transcribe.cpp's <code>commit_stream_text</code> can only append, refuses any candidate boundary at or behind the current one, and bails outright if the raw hypothesis stops matching what was already committed. It snaps commit boundaries to UTF-8 character boundaries <b>only</b> — never to word boundaries — which is precisely why the complete-words rule above has to exist.</p>
+  <p>Measured as well as argued: zero divergences across a real session — 78 revisions, 2835 frames, 1237 characters, including one 87-second utterance.</p>
+  <p><code>live_delta</code> still keeps a standing check, because a different model or a transcribe.cpp bump could break the assumption silently. If a <code>committed</code> ever fails to extend the previous one it logs</p>
+  <pre>live paste: committed prefix diverged (typed <span class="k">"…"</span>, now <span class="k">"…"</span>)</pre>
+  <p>and types nothing further for the rest of the utterance rather than garbling your text. Already-typed characters can't be recalled, so refusing to continue is the only safe move.</p>
+
+  <h2>Live paste freezes its language evidence, and has to</h2>
+  <p>v0.9.6 split filler removal into two tiers. <code>uh</code>/<code>uhm</code>/<code>hmm</code> are universal; <code>um</code>/<code>ah</code>/<code>eh</code>/<code>ha</code> are <b>gated on knowing the output language</b>, because <code>um</code> is a real word in Portuguese and German. When nothing else establishes the language, Handy falls back to running <code>whatlang</code> over the transcript behind a confidence gate.</p>
+  <p>That fallback cannot run on the live path, and the reason is structural. Detection is a function of the <em>whole</em> string, so on a growing prefix it resolves <b>later</b> than it does on the final text — upstream's own test has <code>"um ok"</code> returning no language while a full sentence returns <code>en</code>. Live paste would type <code>um</code> while the prefix was too short to detect, then, one word later, re-derive a prefix with <code>um</code> removed, no longer match what it had already typed, and hit the divergence guard. The feature would go silent four words into every sentence on any setup that leaves the language unresolved.</p>
+  <p>So <code>live_delta</code> passes <code>allow_text_language_detection = false</code> and reuses whatever evidence the engine resolved <em>before</em> the stream started. The price is that a gated filler can survive in live-typed text where detection would later have caught it. An occasional surviving <code>um</code> is what the feature costs to work at all, and <code>live_paste_keeps_typing_when_text_detection_would_flip_mid_utterance</code> pins it — flip that <code>false</code> to <code>true</code> and the test fails, showing live paste stopping mid-sentence.</p>
+
+  <h2>The final paste subtracts what was already typed</h2>
+  <p>On release, nothing about the normal path changes: <code>finalize()</code> returns the whole utterance, post-processing runs on it, history records the full text. The only new step is that <code>remaining_after_live</code> strips the live-typed prefix off before the paste, so you get <code>" attempts"</code> and not the sentence a second time.</p>
+  <p>It has three outcomes, and the third is the interesting one. Nothing left → paste nothing. A remainder → paste that. And <b>final text that doesn't extend the live-typed text</b> → paste nothing and leave the live text standing, on the grounds that a duplicated utterance is worse than a slightly wrong one. That last branch shouldn't be reachable through the UI, since post-processing is a different shortcut; it exists because it's the failure that would hurt most.</p>
+
+  <h2>A new binding has to be registered in three places</h2>
+  <p>Adding a transcribe binding touches three files, and missing one fails quietly. This bug shipped here once.</p>
+  <table class="files">
+    <thead><tr><th>Where</th><th>What it decides</th></tr></thead>
+    <tbody>
+      <tr><td><code>ACTION_MAP</code><br>actions.rs</td><td>What the binding does — here, a <code>TranscribeAction</code> with <code>live: true</code>.</td></tr>
+      <tr><td><code>get_default_settings()</code><br>settings.rs</td><td>Its default shortcut. Must be distinct from the other two: a duplicate is rejected at registration ("already in use") and one of them silently dies.</td></tr>
+      <tr><td><code>is_transcribe_binding()</code><br>transcription_coordinator.rs</td><td><b>The easy one to miss.</b> Skip it and the binding drops onto the plain press/release path: hold-to-talk regardless of your push-to-talk setting, and outside the coordinator's lifecycle serialisation.</td></tr>
+    </tbody>
+  </table>
+  <p class="m">All three now have tests pinning them — <code>every_recording_binding_reaches_the_coordinator</code>, <code>live_paste_has_its_own_distinct_default_shortcut</code>, and a pair of fork guards that fail loudly if a rebase reverts the bundle identity or turns the updater back on.</p>
+
+  <h2>What it costs you</h2>
+  <ul>
+    <li><b>The last word or two always arrive on release.</b> Structural, per above. Live paste feels like typing that trails you by about a word, not like a teleprompter.</li>
+    <li><b>Cancelling can't un-type what's already in your document.</b> There is no undo channel; the words are in the app, and the app owns them now.</li>
+    <li><b>Clipboard paste methods are bypassed mid-stream.</b> <code>ctrl_v</code> and friends would mean one clipboard write per committed word, which would destroy your clipboard. Streamed words are always typed directly; only the final word honours your Paste Method, along with the trailing space and auto-submit that are only correct once.</li>
+    <li><b>Paste Method "None" types nothing at all.</b> The settings panel escalates that one to a warning; the rest are notices.</li>
+    <li><b>Non-streaming models produce no partial text</b>, so the shortcut silently behaves exactly like plain Transcribe.</li>
+    <li><b>A gated filler can survive</b> when the output language was never established — the frozen-evidence tradeoff above.</li>
+    <li><b>Anything that fights synthetic input fights this seven times instead of once.</b> The mechanism is enigo's <code>fast_text</code>, the same call stock Handy makes, so an app that mangles a pasted transcription will mangle each word too.</li>
+  </ul>
+  <p class="m">One worry that turned out not to be real: push-to-talk is fine. enigo's macOS <code>fast_text</code> posts the literal Unicode string with <code>CGEventFlagNull</code>, explicitly ignoring held modifiers, so typing while the shortcut's own modifiers are physically down doesn't mangle the text. Tested.</p>
+
+  <h2>The rest of the fork</h2>
+  <p>Three things that aren't the feature but are the difference between a fork that works and a fork that eats itself.</p>
+  <ul>
+    <li><b>The updater is off by construction.</b> Upstream's minisign public key is bundled, so an update check would find upstream's latest release, <em>verify the signature successfully</em>, and replace the fork with stock Handy. Update checks default to <code>false</code>, and <code>tauri.conf.json</code> ships <code>"endpoints": []</code> so the updater fails closed even if they're switched back on.</li>
+    <li><b>It signs with a real (self-signed, free) identity, not ad-hoc.</b> macOS pins an Accessibility grant to the app's designated requirement, and ad-hoc signing pins it to the exact binary's cdhash — so every rebuild invalidates the grant, System Settings keeps showing the app ticked, and toggling the checkbox does nothing. A certificate pins to the identifier instead. Grant once.</li>
+    <li><b>Different bundle id</b> (<code>com.rascaltwo.handy</code>), so it runs alongside stock Handy with separate settings, history and permissions, sharing the downloaded models. Both default the transcribe shortcut to <code>option+space</code>, and only one process can claim a global shortcut — so rebind one or quit the other.</li>
+  </ul>
+  <p class="m">Keeping current means rebasing onto upstream release tags, never <code>main</code> and never a merge, so <code>git log v0.9.6..HEAD</code> stays exactly the fork's delta. <code>scripts/update-from-upstream.sh</code> does the fetch, backup branch, rebase and verification — including the one check nothing else catches, that the bundle really was signed with the fork identity rather than falling back to ad-hoc.</p>
+
+  <div class="foot-note">
+    Everything here is read out of the fork's own source — <code>transcription.rs</code>, <code>actions.rs</code>, <code>clipboard.rs</code>, <code>transcription_coordinator.rs</code> — and its tests.<br>
+    Full prose: <a href="https://github.com/RascalTwo/Handy/blob/live-injection/FORK.md">FORK.md</a> · upstream: <a href="https://github.com/cjpais/Handy">cjpais/Handy</a>, under a feature freeze, which is why this is a fork and not a pull request.
+  </div>
+</article>
+
+<script type="module" src="/_kit/poster.js"></script>
+<script type="module">
+  import { stepper, $ } from "/_kit/viz.js";
+
+  /* ───────────────────────── the card figure ─────────────────────────
+     y = the spoken word. x = time. A bar starts at the moment that word is
+     in your document and runs to the right edge, so "present from here on"
+     is a length you can point at. Live draws a staircase; stock is a wall. */
+
+  const T_MAX = 4.4, T_REL = 3.6, T_FINAL = 3.8;
+  const WORDS = [
+    ["set",      0.8],
+    ["the",      1.2],
+    ["retry",    2.1],
+    ["budget",   2.7],
+    ["to",       2.7],
+    ["three",    3.1],
+    ["attempts", T_FINAL],   // held back to the final paste — never crossed a boundary
+  ];
+
+  const GUT = 76, PX0 = 84, PX1 = 452, ROW0 = 36, ROWH = 33;
+  const xt = (t) => PX0 + (t / T_MAX) * (PX1 - PX0);
+  const ry = (i) => ROW0 + i * ROWH;
+  const PLOT_BOT = ry(WORDS.length) - 6;
+
+  const parts = [];
+
+  // axis: ticks along the top, one per second
+  parts.push(`<line x1="${PX0}" y1="24" x2="${PX1}" y2="24" stroke="var(--border)" stroke-width="1"/>`);
+  for (let s = 0; s <= 4; s++) {
+    const x = xt(s);
+    parts.push(`<line x1="${x}" y1="24" x2="${x}" y2="${PLOT_BOT}" stroke="var(--border)" stroke-width="1" opacity="0.35"/>`);
+    parts.push(`<text x="${x}" y="16" fill="var(--faint)" font-family="var(--mono)" font-size="10" text-anchor="middle">${s === 0 ? "0s" : s}</text>`);
+  }
+
+  // the two vertical events. The wash is the point of the whole chart: everything
+  // right of it arrived in a single paste, which is all stock Handy ever does.
+  parts.push(`<rect x="${xt(T_FINAL)}" y="26" width="${PX1 - xt(T_FINAL)}" height="${PLOT_BOT - 26}" fill="var(--stock)" opacity="0.12"/>`);
+  parts.push(`<line x1="${xt(T_REL)}" y1="24" x2="${xt(T_REL)}" y2="${PLOT_BOT}" stroke="var(--warn)" stroke-width="1.5" stroke-dasharray="4 3"/>`);
+  parts.push(`<line x1="${xt(T_FINAL)}" y1="24" x2="${xt(T_FINAL)}" y2="${PLOT_BOT}" stroke="var(--stock)" stroke-width="1" opacity="0.6"/>`);
+
+  // one row per spoken word
+  WORDS.forEach(([word, t], i) => {
+    const y = ry(i);
+    parts.push(`<text x="${GUT}" y="${y + 13}" fill="var(--muted)" font-family="var(--mono)" font-size="12.5" text-anchor="end">${word}</text>`);
+    parts.push(`<rect data-viz-id="live-${word}" data-label="live paste: &quot;${word}&quot; is in your document from ${t}s" `
+      + `x="${xt(t)}" y="${y + 2}" width="${PX1 - xt(t)}" height="11" rx="3" fill="var(--live)"/>`);
+    parts.push(`<rect data-viz-id="stock-${word}" data-label="stock: &quot;${word}&quot; arrives at the final paste, ${T_FINAL}s" `
+      + `x="${xt(T_FINAL)}" y="${y + 17}" width="${PX1 - xt(T_FINAL)}" height="7" rx="2" fill="var(--stock)" opacity="0.85"/>`);
+  });
+
+  // the one honest annotation: the last word rides the same final paste as stock
+  const yLast = ry(WORDS.length - 1);
+  parts.push(`<text x="0" y="${yLast + 40}" fill="var(--warn)" font-family="var(--mono)" font-size="10.5">`
+    + `↑ never crossed a word boundary — it rides the final paste too</text>`);
+
+  document.getElementById("card-chart").innerHTML = parts.join("");
+
+  /* ─────────────────────── the walkthrough stepper ───────────────────────
+     Spoken: "set the um retry budget to three attempts". Every committed /
+     eligible / delta value below is what live_delta() actually computes. */
+
+  const D = (s) => `<span class="delta">${s}</span>`;
+  const STEPS = [
+    { when: "0.8s · feed()", call: "committed_changed → live_delta()",
+      committed: "set the", tentative: " u",
+      elig: `<span class="el">set</span>`, delta: D("set"), doc: "set",
+      lede: `<code>committed</code> grew, so <code>live_delta</code> runs. Only <b>complete words</b> are eligible — everything up to the last whitespace — so <code>"set the"</code> yields <code>"set"</code> and <code>"the"</code> waits.` },
+
+    { when: "1.0s · feed()", call: "tentative only → not called",
+      committed: "set the", tentative: " um r",
+      elig: `<span class="none">— not re-derived</span>`, delta: `<span class="none">nothing</span>`, doc: "set",
+      lede: `<b>Most updates look like this.</b> The stream revises its tentative tail several times a second; <code>committed</code> didn't move, so the filter doesn't re-run and nothing reaches your app.` },
+
+    { when: "1.2s · feed()", call: "committed_changed → live_delta()",
+      committed: "set the um", tentative: " retr",
+      elig: `<span class="el">set the</span>`, delta: D(" the"), doc: "set the",
+      lede: `<code>um</code> has been committed, but it's the trailing word, so it isn't eligible. That's the rule earning its keep: the filler filter matches on word boundaries and would happily type a half-streamed <code>"u"</code>.` },
+
+    { when: "1.7s · feed()", call: "committed_changed → live_delta()",
+      committed: "set the um retry", tentative: " bu",
+      elig: `<span class="el">set the </span><span class="drop">um</span>`, delta: `<span class="none">nothing — empty delta</span>`, doc: "set the",
+      lede: `<b>The filler never gets typed.</b> <code>um</code> became complete and <code>remove_filler_words</code> dropped it in the same breath. The eligible prefix is still <code>"set the"</code>, so <code>strip_prefix</code> returns an empty delta and live paste stays quiet.` },
+
+    { when: "2.1s · feed()", call: "committed_changed → live_delta()",
+      committed: "set the um retry budget", tentative: " to",
+      elig: `<span class="el">set the </span><span class="drop">um</span><span class="el"> retry</span>`, delta: D(" retry"), doc: "set the retry",
+      lede: `<code>retry</code> is complete now and the filler in front of it is already gone, so it lands directly after <code>the</code>. The <em>whole</em> prefix is re-filtered and re-diffed every update — filtering each delta in isolation would have typed the <code>um</code> three steps ago.` },
+
+    { when: "2.7s · feed()", call: "committed_changed → live_delta()",
+      committed: "set the um retry budget to three", tentative: "",
+      elig: `<span class="el">set the </span><span class="drop">um</span><span class="el"> retry budget to</span>`, delta: D(" budget to"), doc: "set the retry budget to",
+      lede: `Two words in one delta. Commit boundaries snap to <b>UTF-8 characters, never words</b>, so a delta is however many whole words the boundary happened to cross — sometimes none, sometimes several.` },
+
+    { when: "3.1s · feed()", call: "committed_changed → live_delta()",
+      committed: "set the um retry budget to three attempts", tentative: "",
+      elig: `<span class="el">set the </span><span class="drop">um</span><span class="el"> retry budget to three</span>`, delta: D(" three"), doc: "set the retry budget to three",
+      lede: `<code>attempts</code> is committed but has no whitespace after it, so it waits. <b>This is the one-word floor.</b> Nothing after this point can be typed until you let go of the key.` },
+
+    { when: "3.6s · RELEASE", call: "finalize() → remaining_after_live()",
+      committed: "set the um retry budget to three attempts", tentative: "", final: true,
+      elig: `<span class="el">set the retry budget to three attempts</span> <span class="none">← final text, full filter</span>`,
+      delta: `<span class="delta final"> attempts</span>`, doc: "set the retry budget to three attempts",
+      lede: `Hotkey released. <code>finalize()</code> returns the whole utterance and post-processing runs on it normally — <b>history records the full text</b>. Then <code>remaining_after_live</code> subtracts the live-typed prefix, so only <code>" attempts"</code> is pasted, through your normal Paste Method with the trailing space and auto-submit that are only correct once.` },
+  ];
+
+  const el = {
+    when: $("#s-when"), call: $("#s-call"), stream: $("#s-stream"), elig: $("#s-elig"),
+    delta: $("#s-delta"), doc: $("#s-doc"), lede: $("#s-lede"), pos: $("#s-pos"),
+  };
+
+  function render(i) {
+    const s = STEPS[i];
+    el.when.innerHTML = `<span style="color:${s.final ? "var(--warn)" : "var(--live)"}">${s.when}</span>`;
+    el.call.innerHTML = `<span style="color:var(--faint)">${s.call}</span>`;
+    el.stream.innerHTML = `<span class="cm">${s.committed}</span>`
+      + (s.tentative ? `<span class="tv">${s.tentative}</span>` : `<span class="none"> ·</span>`);
+    el.elig.innerHTML = s.elig;
+    el.delta.innerHTML = s.delta;
+    el.doc.innerHTML = `${s.doc}<span class="caret"></span>`;
+    el.lede.innerHTML = s.lede;
+    el.pos.textContent = `${i + 1} / ${STEPS.length}`;
+  }
+
+  const st = stepper({ n: STEPS.length, onStep: render, autoplayMs: 3200, hashKey: "delta" });
+  $("#s-next").onclick = () => st.next();
+  $("#s-prev").onclick = () => st.prev();
+  const playBtn = $("#s-play");
+  let playing = false;
+  playBtn.onclick = () => {
+    playing = !playing;
+    if (playing) { st.play(); playBtn.textContent = "❚❚ pause"; }
+    else { st.pause(); playBtn.textContent = "▶ play"; }
+  };
+  // a manual nav pauses autoplay inside stepper() — keep the button honest about it
+  for (const b of [$("#s-next"), $("#s-prev")])
+    b.addEventListener("click", () => { playing = false; playBtn.textContent = "▶ play"; });
+</script>
+</body>
+</html>
