@@ -11,6 +11,12 @@
 > read FORK.md first: both apps default to the same `option+space` global
 > shortcut and will fight over it.
 
+[![Live paste, explained](https://rascaltwo.github.io/Handy/handy-live-injection/og.auto.png)](https://rascaltwo.github.io/Handy/handy-live-injection/)
+
+**→ [Live paste, explained](https://rascaltwo.github.io/Handy/handy-live-injection/)** — an
+interactive walkthrough of what the third shortcut does and how the words get into the
+focused app.
+
 [![Discord](https://img.shields.io/badge/Discord-%235865F2.svg?style=for-the-badge&logo=discord&logoColor=white)](https://discord.com/invite/WVBeWsNXK4)
 
 **A free, open source, and extensible speech-to-text application that works completely offline.**
