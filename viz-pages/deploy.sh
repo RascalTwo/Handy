@@ -12,7 +12,7 @@ set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"                       # the viz-pages dir
 ROOT="$(git -C "$HERE" rev-parse --show-toplevel)"
 REMOTE="$(git -C "$HERE" remote get-url origin)"
-BUILD="$HOME/.claude/skills/viz/build.ts"
+VIZ="$HOME/.claude/skills/viz/viz.ts"
 
 # --- Auto-select a gh account with push access, so deploying never needs a manual
 # `gh auth switch`. gh's git-credential helper only serves the ACTIVE account's token, so a
@@ -51,7 +51,7 @@ case "$REMOTE" in
     owner="$(echo "${slug%%/*}" | tr '[:upper:]' '[:lower:]')"; repo="${slug#*/}"
     [ -n "$base" ] || base="https://${owner}.github.io/${repo}"
     out="$(mktemp -d)"; trap 'rm -rf "$out"; gh_restore' EXIT
-    bun "$BUILD" "$HERE" --out "$out" --base-url "$base" --no-deploy-notice
+    bun "$VIZ" publish "$HERE" --out "$out" --base-url "$base" --no-deploy-notice
     touch "$out/.nojekyll"                                  # skip GitHub's Jekyll pass
     [ -n "${DRY_RUN:-}" ] && { echo "(dry-run) built → $out, not pushing"; exit 0; }
     # Force-push the built site as a fresh orphan history on gh-pages.
@@ -69,7 +69,7 @@ case "$REMOTE" in
     slug="${REMOTE#*gitlab.com[:/]}"; slug="${slug%.git}"
     group="$(echo "${slug%%/*}" | tr '[:upper:]' '[:lower:]')"; repo="${slug##*/}"
     [ -n "$base" ] || base="https://${group}.gitlab.io/${repo}"
-    bun "$BUILD" "$HERE" --out "$ROOT/public" --base-url "$base" --no-deploy-notice
+    bun "$VIZ" publish "$HERE" --out "$ROOT/public" --base-url "$base" --no-deploy-notice
     [ -n "${DRY_RUN:-}" ] && { echo "(dry-run) built → $ROOT/public, not committing/pushing"; exit 0; }
     git -C "$ROOT" add public
     git -C "$ROOT" -c user.email=deploy@local -c user.name=deploy commit -qm "Deploy viz pages" \
