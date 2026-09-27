@@ -15,29 +15,25 @@ REMOTE="$(git -C "$HERE" remote get-url origin)"
 VIZ="$HOME/.claude/skills/viz/viz.ts"
 
 # --- Auto-select a gh account with push access, so deploying never needs a manual
-# `gh auth switch`. gh's git-credential helper only serves the ACTIVE account's token, so a
-# push 403s when the active account lacks write here. gh_pick_pusher switches to a logged-in
-# account that HAS write (saving the original in _GH_ORIG); gh_restore puts it back — wired
-# into the EXIT trap. No-op without gh, or if the active account is already good. ---
-_GH_ORIG=""
+# `gh auth switch`. gh's git-credential helper serves the ACTIVE account's token, so a push 403s
+# when the active account lacks write here. gh_pick_pusher exports GH_TOKEN for a logged-in
+# account that HAS write — the helper honours it — and never switches the active account, so a
+# concurrent deploy or a killed run can't leave the wrong one active. No-op without gh, or if the
+# active account is already good. ---
 gh_pick_pusher() {  # $1 = remote URL
   command -v gh >/dev/null 2>&1 || return 0
   case "$1" in *github.com*) ;; *) return 0 ;; esac
-  local nwo acct orig
+  local nwo acct token
   nwo="${1#*github.com[:/]}"; nwo="${nwo%.git}"
   [ "$(gh api "repos/$nwo" --jq '.permissions.push' 2>/dev/null)" = "true" ] && return 0
-  orig="$(gh api user --jq '.login' 2>/dev/null || true)"
   for acct in $(gh auth status 2>/dev/null | sed -nE 's/.*Logged in to [^ ]+ account ([A-Za-z0-9_-]+).*/\1/p' | sort -u); do
-    [ "$acct" = "$orig" ] && continue
-    gh auth switch -h github.com -u "$acct" >/dev/null 2>&1 || continue
-    if [ "$(gh api "repos/$nwo" --jq '.permissions.push' 2>/dev/null)" = "true" ]; then
-      _GH_ORIG="$orig"; echo "  ↳ gh: pushing as $acct (write access to $nwo)${orig:+; restoring $orig after}"; return 0
+    token="$(gh auth token -h github.com -u "$acct" 2>/dev/null)" || continue
+    if [ "$(GH_TOKEN="$token" gh api "repos/$nwo" --jq '.permissions.push' 2>/dev/null)" = "true" ]; then
+      export GH_TOKEN="$token"; echo "  ↳ gh: pushing as $acct (write access to $nwo)"; return 0
     fi
   done
-  [ -n "$orig" ] && gh auth switch -h github.com -u "$orig" >/dev/null 2>&1 || true
   echo "  ⚠️  no logged-in gh account has write to $nwo — push may 403" >&2
 }
-gh_restore() { [ -n "$_GH_ORIG" ] && gh auth switch -h github.com -u "$_GH_ORIG" >/dev/null 2>&1 || true; }
 
 # The deployed URL now comes from the standard base-url.sh contract, so this script, the viz
 # preview and the self-portrait all read ONE owner for it. Falls back to the inline derivation
@@ -50,7 +46,7 @@ case "$REMOTE" in
     slug="${REMOTE#*github.com[:/]}"; slug="${slug%.git}"
     owner="$(echo "${slug%%/*}" | tr '[:upper:]' '[:lower:]')"; repo="${slug#*/}"
     [ -n "$base" ] || base="https://${owner}.github.io/${repo}"
-    out="$(mktemp -d)"; trap 'rm -rf "$out"; gh_restore' EXIT
+    out="$(mktemp -d)"; trap 'rm -rf "$out"' EXIT
     bun "$VIZ" publish "$HERE" --out "$out" --base-url "$base" --no-deploy-notice
     touch "$out/.nojekyll"                                  # skip GitHub's Jekyll pass
     [ -n "${DRY_RUN:-}" ] && { echo "(dry-run) built → $out, not pushing"; exit 0; }
@@ -74,7 +70,6 @@ case "$REMOTE" in
     git -C "$ROOT" add public
     git -C "$ROOT" -c user.email=deploy@local -c user.name=deploy commit -qm "Deploy viz pages" \
       || echo "(public/ unchanged — nothing to commit)"
-    trap gh_restore EXIT
     gh_pick_pusher "$REMOTE"
     git -C "$ROOT" push origin HEAD
     echo "✅ pushed — GitLab CI pages job will publish ${base}/"
