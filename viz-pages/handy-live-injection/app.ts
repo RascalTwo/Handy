@@ -21,29 +21,22 @@
   const ry = (i: number) => ROW0 + i * ROWH;
   const PLOT_BOT = ry(WORDS.length) - 6;
 
-  const parts: string[] = [];
-
   // axis: ticks along the top, one per second
-  parts.push(`<line x1="${PX0}" y1="24" x2="${PX1}" y2="24" stroke="var(--border)" stroke-width="1"/>`);
+  const parts: string[] = [`<line x1="${PX0}" y1="24" x2="${PX1}" y2="24" stroke="var(--border)" stroke-width="1"/>`];
   for (let s = 0; s <= 4; s++) {
     const x = xt(s);
-    parts.push(`<line x1="${x}" y1="24" x2="${x}" y2="${PLOT_BOT}" stroke="var(--border)" stroke-width="1" opacity="0.35"/>`);
-    parts.push(`<text x="${x}" y="16" fill="var(--faint)" font-family="var(--mono)" font-size="10" text-anchor="middle">${s === 0 ? "0s" : s}</text>`);
+    parts.push(`<line x1="${x}" y1="24" x2="${x}" y2="${PLOT_BOT}" stroke="var(--border)" stroke-width="1" opacity="0.35"/>`, `<text x="${x}" y="16" fill="var(--faint)" font-family="var(--mono)" font-size="10" text-anchor="middle">${s === 0 ? "0s" : s}</text>`);
   }
 
   // the two vertical events. The wash is the point of the whole chart: everything
   // right of it arrived in a single paste, which is all stock Handy ever does.
-  parts.push(`<rect x="${xt(T_FINAL)}" y="26" width="${PX1 - xt(T_FINAL)}" height="${PLOT_BOT - 26}" fill="var(--stock)" opacity="0.12"/>`);
-  parts.push(`<line x1="${xt(T_REL)}" y1="24" x2="${xt(T_REL)}" y2="${PLOT_BOT}" stroke="var(--warn)" stroke-width="1.5" stroke-dasharray="4 3"/>`);
-  parts.push(`<line x1="${xt(T_FINAL)}" y1="24" x2="${xt(T_FINAL)}" y2="${PLOT_BOT}" stroke="var(--stock)" stroke-width="1" opacity="0.6"/>`);
+  parts.push(`<rect x="${xt(T_FINAL)}" y="26" width="${PX1 - xt(T_FINAL)}" height="${PLOT_BOT - 26}" fill="var(--stock)" opacity="0.12"/>`, `<line x1="${xt(T_REL)}" y1="24" x2="${xt(T_REL)}" y2="${PLOT_BOT}" stroke="var(--warn)" stroke-width="1.5" stroke-dasharray="4 3"/>`, `<line x1="${xt(T_FINAL)}" y1="24" x2="${xt(T_FINAL)}" y2="${PLOT_BOT}" stroke="var(--stock)" stroke-width="1" opacity="0.6"/>`);
 
   // one row per spoken word
   WORDS.forEach(([word, t], i) => {
     const y = ry(i);
-    parts.push(`<text x="${GUT}" y="${y + 13}" fill="var(--muted)" font-family="var(--mono)" font-size="12.5" text-anchor="end">${word}</text>`);
-    parts.push(`<rect data-viz-id="live-${word}" data-label="live paste: &quot;${word}&quot; is in your document from ${t}s" `
-      + `x="${xt(t)}" y="${y + 2}" width="${PX1 - xt(t)}" height="11" rx="3" fill="var(--live)"/>`);
-    parts.push(`<rect data-viz-id="stock-${word}" data-label="stock: &quot;${word}&quot; arrives at the final paste, ${T_FINAL}s" `
+    parts.push(`<text x="${GUT}" y="${y + 13}" fill="var(--muted)" font-family="var(--mono)" font-size="12.5" text-anchor="end">${word}</text>`, `<rect data-viz-id="live-${word}" data-label="live paste: &quot;${word}&quot; is in your document from ${t}s" `
+      + `x="${xt(t)}" y="${y + 2}" width="${PX1 - xt(t)}" height="11" rx="3" fill="var(--live)"/>`, `<rect data-viz-id="stock-${word}" data-label="stock: &quot;${word}&quot; arrives at the final paste, ${T_FINAL}s" `
       + `x="${xt(T_FINAL)}" y="${y + 17}" width="${PX1 - xt(T_FINAL)}" height="7" rx="2" fill="var(--stock)" opacity="0.85"/>`);
   });
 
@@ -52,7 +45,7 @@
   parts.push(`<text x="0" y="${yLast + 40}" fill="var(--warn)" font-family="var(--mono)" font-size="10.5">`
     + `↑ never crossed a word boundary — it rides the final paste too</text>`);
 
-  document.getElementById("card-chart")!.innerHTML = parts.join("");
+  document.querySelector("#card-chart")!.innerHTML = parts.join("");
 
   /* ─────────────────────── the walkthrough stepper ───────────────────────
      Spoken: "set the um retry budget to three attempts". Every committed /
@@ -122,15 +115,15 @@
   }
 
   const st = stepper({ n: STEPS.length, onStep: render, autoplayMs: 3200, hashKey: "delta" });
-  ($("#s-next") as HTMLElement).onclick = () => st.next();
-  ($("#s-prev") as HTMLElement).onclick = () => st.prev();
-  const playBtn = $("#s-play") as HTMLElement;
+  const nextBtn = $("#s-next")!, prevBtn = $("#s-prev")!, playBtn = $("#s-play")!;
+  nextBtn.addEventListener("click", () => st.next());
+  prevBtn.addEventListener("click", () => st.prev());
   let playing = false;
-  playBtn.onclick = () => {
+  playBtn.addEventListener("click", () => {
     playing = !playing;
     if (playing) { st.play(); playBtn.textContent = "❚❚ pause"; }
     else { st.pause(); playBtn.textContent = "▶ play"; }
-  };
+  });
   // a manual nav pauses autoplay inside stepper() — keep the button honest about it
-  for (const b of [$("#s-next")!, $("#s-prev")!])
-    b.addEventListener("click", () => { playing = false; playBtn.textContent = "▶ play"; });
+  const stopPlaying = () => { playing = false; playBtn.textContent = "▶ play"; };
+  for (const b of [nextBtn, prevBtn]) b.addEventListener("click", stopPlaying);
