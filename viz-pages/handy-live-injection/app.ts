@@ -1,4 +1,4 @@
-import { stepper, $ } from "/_kit/viz.js";
+import { stepper, $ } from "@viz/kit";
 
 /* ───────────────────────── the card figure ─────────────────────────
      y = the spoken word. x = time. A bar starts at the moment that word is
