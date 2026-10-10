@@ -2225,6 +2225,7 @@ mod tests {
                 false,
                 &evidence,
                 &languages(&["zh", "ja", "en"]),
+                true,
             );
 
             assert_eq!(result, "学校に行きます", "{evidence:?}");
@@ -2282,7 +2283,8 @@ mod tests {
             false,
             &OutputLanguageEvidence::Unknown,
             &languages(&["zh", "en", "ja"]),
-        );
+                true,
+            );
 
         assert_eq!(result, "我们今天下午一起去学校图书馆看书，然后再去吃晚饭。");
     }
