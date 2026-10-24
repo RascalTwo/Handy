@@ -10,8 +10,8 @@ use transcribe_cpp::StreamOptions;
 use super::chunked::{ChunkSetup, ChunkedDecode, PendingSetup};
 use super::policy::LiveDecode;
 use super::{
-    emit_stream_text, join_chunks, lock_perf, PreviewScript, RunOutcome, RunSetup,
-    StreamFinalizeReply, StreamPerf, TranscriptionManager,
+    emit_stream_text, inject_live_delta, join_chunks, lock_perf, PreviewScript, RunOutcome,
+    RunSetup, StreamFinalizeReply, StreamPerf, TranscriptionManager,
 };
 use crate::audio_toolkit::OutputLanguageEvidence;
 use crate::engine_supervisor::{EngineError, LoadedInfo, StreamHandle, StreamProgress};
@@ -170,6 +170,9 @@ impl<'a> StreamSession<'a> {
             let app_handle = tm.app_handle.clone();
             let languages = setup.languages.clone();
             let mut preview_script = PreviewScript::new(settings.chinese_script, &output_language);
+            let live_utterance = Arc::clone(&tm.live_utterance);
+            let live_typed = Arc::clone(&tm.live_typed);
+            let output_language = output_language.clone();
             move |progress: StreamProgress| {
                 let mut perf = lock_perf(&perf);
                 perf.record_compute(progress.elapsed);
@@ -178,6 +181,20 @@ impl<'a> StreamSession<'a> {
                     perf.record_emit();
                     let (committed, tentative) =
                         preview_script.convert(&text.committed, &text.tentative, &languages);
+                    // Only the committed prefix is ever typed, and deriving the
+                    // delta re-runs the output filter (which also converts the
+                    // script), so skip it on tentative-only churn, which is most
+                    // updates.
+                    if progress.update.committed_changed {
+                        inject_live_delta(
+                            &app_handle,
+                            &live_utterance,
+                            &live_typed,
+                            &text.committed,
+                            &output_language,
+                            &languages,
+                        );
+                    }
                     emit_stream_text(&app_handle, &committed, &tentative);
                 }
                 perf.maybe_log();
