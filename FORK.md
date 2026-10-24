@@ -87,6 +87,8 @@ drag it to `/Applications`. Expect a slow first build: it compiles
 whisper.cpp/ggml from source, and the release profile uses `lto = true` with
 `codegen-units = 1`.
 
+**If the build dies in `transcribe-cpp-sys` with `ld: tapi error: malformed file … unknown architecture arm64e.x1`**, the toolchain is mismatched, not the code: Command Line Tools installed a newer macOS SDK than the selected Xcode's linker can read (seen with Xcode 26.3 + CLT's MacOSX27.0 SDK). Build against Xcode's own SDK: `SDKROOT="$(xcode-select -p)/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk" bunx tauri build --bundles app`. `scripts/update-from-upstream.sh` checks for this and sets `SDKROOT` itself.
+
 **No Apple Developer account is needed**, and no notarization. A locally compiled
 app is never quarantined, so there's no Gatekeeper prompt and no `xattr`
 incantation either.
@@ -308,6 +310,7 @@ mangle the text. Tested.
 | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
 | `src-tauri/src/settings.rs`                             | `transcribe_live` binding default, updater default off                                         |
 | `src-tauri/src/managers/transcription.rs`               | `begin_utterance()`, `live_delta()`, `inject_live_delta()`, `allow_text_language_detection`    |
+| `src-tauri/src/managers/transcription/live.rs`          | Calls `inject_live_delta()` from the stream's progress callback                                |
 | `src-tauri/src/clipboard.rs`                            | `paste_raw()` — types text with no trailing space / auto-submit / clipboard write              |
 | `src-tauri/src/actions.rs`                              | `live` flag on `TranscribeAction`, `transcribe_live` in `ACTION_MAP`, `remaining_after_live()` |
 | `src/components/settings/LivePaste.tsx`                 | The live shortcut + its notice                                                                 |

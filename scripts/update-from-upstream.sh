@@ -36,6 +36,27 @@ verify() {
     # Unlocking up front is instant and turns that into a non-event.
     security unlock-keychain -p handy-local-signing handy-signing.keychain 2>/dev/null ||
       warn "Could not unlock handy-signing.keychain — signing may fail. See FORK.md."
+
+    # Command Line Tools can ship a newer macOS SDK than the selected Xcode's
+    # linker can read ("tapi error: malformed file … unknown architecture"),
+    # and that only surfaces deep inside transcribe-cpp-sys's cmake. If the
+    # default SDK can't link a trivial program, build against Xcode's own.
+    if [[ -z "${SDKROOT:-}" ]]; then
+      local probe
+      probe="$(mktemp -d)"
+      echo 'int main(void){return 0;}' >"$probe/t.c"
+      if ! cc "$probe/t.c" -o "$probe/t" 2>/dev/null; then
+        local xcode_sdk
+        xcode_sdk="$(xcode-select -p)/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
+        if [[ -d "$xcode_sdk" ]] && SDKROOT="$xcode_sdk" cc "$probe/t.c" -o "$probe/t" 2>/dev/null; then
+          warn "The default macOS SDK can't link with this linker; using $xcode_sdk. See FORK.md."
+          export SDKROOT="$xcode_sdk"
+        else
+          warn "The C toolchain can't link a trivial program — the build will fail. See FORK.md."
+        fi
+      fi
+      rm -rf "$probe"
+    fi
   fi
 
   bold "Running the fork guards…"
