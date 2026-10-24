@@ -15,8 +15,8 @@ use crate::language_detection::{
 use crate::managers::audio::{create_smoothed_detector, AudioRecordingManager};
 use crate::managers::model::ModelManager;
 use crate::settings::{
-    get_settings, AppSettings, ChineseScript, ModelUnloadTimeout, TranscribeAcceleratorSetting,
-    PasteMethod,
+    get_settings, AppSettings, ChineseScript, ModelUnloadTimeout, PasteMethod,
+    TranscribeAcceleratorSetting,
 };
 use anyhow::Result;
 use chunked::{ChunkSetup, ChunkedDecode};
@@ -956,51 +956,6 @@ impl TranscriptionManager {
         }
     }
 
-    /// Type newly committed words into the focused app mid-recording.
-    fn inject_live_delta(
-        &self,
-        committed: &str,
-        output_language: &OutputLanguageEvidence,
-        supported_languages: &[String],
-    ) {
-        if !self.live_utterance.load(Ordering::Acquire) {
-            return;
-        }
-        let settings = get_settings(&self.app_handle);
-        if settings.paste_method == PasteMethod::None {
-            return;
-        }
-
-        let Ok(mut typed) = self.live_typed.lock() else {
-            return;
-        };
-        let Some((delta, eligible)) = live_delta(
-            committed,
-            &typed,
-            &settings,
-            output_language,
-            supported_languages,
-        ) else {
-            return;
-        };
-
-        *typed = eligible;
-        drop(typed);
-
-        // Enigo is main-thread-only here, matching the terminal paste path in
-        // actions.rs. run_on_main_thread preserves submission order, so words
-        // land in the order they were committed.
-        let app_handle = self.app_handle.clone();
-        if let Err(e) = self.app_handle.run_on_main_thread(move || {
-            match crate::utils::paste_raw(&delta, &app_handle) {
-                Ok(()) => {}
-                Err(e) => error!("live paste failed: {}", e),
-            }
-        }) {
-            error!("live paste could not reach the main thread: {:?}", e);
-        }
-    }
-
     /// Transcribe a whole clip in batch: a re-transcribed history entry, or
     /// a file from the CLI.
     pub fn transcribe(&self, audio: Vec<f32>) -> Result<String> {
@@ -1293,6 +1248,7 @@ fn finish_text(outcome: RunOutcome, settings: &AppSettings) -> String {
         setup.custom_words_prompted(),
         &output_language,
         &setup.languages,
+        true,
     )
 }
 
@@ -1446,6 +1402,55 @@ fn agreed_language(transcripts: &[Transcript]) -> Option<String> {
         .next()
         .flatten()
         .filter(|first| detected.all(|language| language.as_ref() == Some(first)))
+}
+
+/// Type newly committed words into the focused app mid-recording.
+///
+/// A free function rather than a method because it runs in the stream's
+/// progress callback, on the engine's thread, which holds only these handles.
+fn inject_live_delta(
+    app_handle: &AppHandle,
+    live_utterance: &AtomicBool,
+    live_typed: &Mutex<String>,
+    committed: &str,
+    output_language: &OutputLanguageEvidence,
+    supported_languages: &[String],
+) {
+    if !live_utterance.load(Ordering::Acquire) {
+        return;
+    }
+    let settings = get_settings(app_handle);
+    if settings.paste_method == PasteMethod::None {
+        return;
+    }
+
+    let Ok(mut typed) = live_typed.lock() else {
+        return;
+    };
+    let Some((delta, eligible)) = live_delta(
+        committed,
+        &typed,
+        &settings,
+        output_language,
+        supported_languages,
+    ) else {
+        return;
+    };
+
+    *typed = eligible;
+    drop(typed);
+
+    // Hop to the main thread without waiting, so the engine's thread isn't
+    // held up; run_on_main_thread preserves submission order, so words land
+    // in the order they were committed.
+    let app = app_handle.clone();
+    if let Err(e) = app_handle.run_on_main_thread(move || {
+        if let Err(e) = crate::utils::paste_raw(&delta, &app) {
+            error!("live paste failed: {}", e);
+        }
+    }) {
+        error!("live paste could not reach the main thread: {:?}", e);
+    }
 }
 
 fn emit_stream_text(app_handle: &AppHandle, committed: &str, tentative: &str) {
@@ -2190,8 +2195,8 @@ mod tests {
             false,
             &OutputLanguageEvidence::Unknown,
             &languages(&["zh", "en", "ja"]),
-                true,
-            );
+            true,
+        );
 
         assert_eq!(result, "我们今天下午一起去学校图书馆看书，然后再去吃晚饭。");
     }
@@ -2486,6 +2491,7 @@ mod tests {
             true,
             &evidence,
             &supported,
+            true,
         );
         assert_eq!(prompted, "i use handy every day");
 
@@ -2496,6 +2502,7 @@ mod tests {
             false,
             &evidence,
             &supported,
+            true,
         );
         assert_eq!(corrected, "i use Handy every day");
     }
