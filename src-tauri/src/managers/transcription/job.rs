@@ -116,6 +116,9 @@ impl TranscriptionManager {
                     setup.custom_words_prompted(),
                     &output_language,
                     &setup.languages,
+                    // A finished transcript, not a growing live prefix: text
+                    // detection is safe here, as on the batch path.
+                    true,
                 )
             })
             .filter(|p| !p.trim().is_empty())
