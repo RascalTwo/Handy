@@ -904,15 +904,22 @@ impl ShortcutAction for TranscribeAction {
                                 // Live injection already typed a prefix of this
                                 // text; send only what it has not sent yet.
                                 // History above still records the full text.
-                                let final_text =
-                                    match remaining_after_live(&final_text, &tm) {
-                                        Some(text) => text,
-                                        None => {
-                                            utils::hide_recording_overlay(&ah);
-                                            set_tray_state(&ah, TrayIconState::Idle);
-                                            return;
-                                        }
-                                    };
+                                let final_text = match remaining_after_live(&final_text, &tm) {
+                                    Some(text) => text,
+                                    None => {
+                                        // Live paste already typed it: a success, so end it like one.
+                                        notices::clear(&ah, NoticeSource::Dictation);
+                                        utils::hide_recording_overlay(&ah);
+                                        set_tray_state(&ah, TrayIconState::Idle);
+                                        emit_transcription_complete(
+                                            &ah,
+                                            TranscriptionOutcome::Typed,
+                                            sample_count,
+                                            stop_time,
+                                        );
+                                        return;
+                                    }
+                                };
                                 let rm_for_paste = Arc::clone(&rm);
                                 // Taken before the paste thread exists, and so
                                 // before the next session can start.
