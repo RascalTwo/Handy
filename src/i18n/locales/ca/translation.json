@@ -471,7 +471,8 @@
         "output": "Sortida",
         "transcription": "Transcripció",
         "history": "Historial",
-        "experimental": "Experimental"
+        "experimental": "Experimental",
+        "livePaste": "Enganxament en directe"
       },
       "experimentalToggle": {
         "label": "Funcions experimentals",
@@ -537,6 +538,17 @@
           "externalScript": "Script extern"
         },
         "externalScriptPlaceholder": "/camí/al/vostre/script.sh"
+      },
+      "livePaste": {
+        "notice": {
+          "title": "Aquesta drecera escriu cada paraula mentre la dieu. Notes:",
+          "pasteClipboard": "Les paraules en streaming s'escriuen directament, ignorant el vostre Mètode d'enganxament, perquè escriure al porta-retalls a cada paraula destruiria el que hi havíeu copiat. Només l'última paraula fa servir el vostre Mètode d'enganxament.",
+          "pasteExternalScript": "Les paraules en streaming s'escriuen directament en lloc de passar pel vostre script extern. Només l'última paraula executa l'script.",
+          "pasteNone": "El Mètode d'enganxament és Cap, així que no s'escriu res enlloc. Aquesta drecera no té cap efecte fins que trieu un altre Mètode d'enganxament.",
+          "lastWord": "L'última paraula arriba quan deixeu anar la drecera, no mentre parleu: el model encara no l'ha confirmada.",
+          "cancel": "Cancel·lar ja no elimina les paraules que ja s'han escrit.",
+          "streamingOnly": "Només els models en streaming escriuen mentre parleu. Amb qualsevol altre model, funciona com la drecera de transcripció normal."
+        }
       },
       "typingTool": {
         "title": "Eina d'escriptura",

@@ -471,7 +471,8 @@
         "output": "Output",
         "transcription": "Transskription",
         "history": "Historik",
-        "experimental": "Eksperimentel"
+        "experimental": "Eksperimentel",
+        "livePaste": "Live-indsætning"
       },
       "experimentalToggle": {
         "label": "Eksperimentelle funktioner",
@@ -537,6 +538,17 @@
           "externalScript": "Eksternt script"
         },
         "externalScriptPlaceholder": "/sti/til/dit/script.sh"
+      },
+      "livePaste": {
+        "notice": {
+          "title": "Denne genvej skriver hvert ord, mens du siger det. Bemærk:",
+          "pasteClipboard": "Streamede ord skrives direkte og ignorerer din Indsætningsmetode, fordi en skrivning til udklipsholderen for hvert ord ville ødelægge det, du havde kopieret. Kun det sidste ord bruger din Indsætningsmetode.",
+          "pasteExternalScript": "Streamede ord skrives direkte i stedet for at gå gennem dit eksterne script. Kun det sidste ord kører scriptet.",
+          "pasteNone": "Indsætningsmetoden er Ingen, så der skrives ingenting nogen steder. Denne genvej har ingen effekt, før du vælger en anden Indsætningsmetode.",
+          "lastWord": "Det sidste ord kommer, når du slipper genvejen, ikke mens du taler — modellen har ikke fastlagt det endnu.",
+          "cancel": "Annullering fjerner ikke længere ord, der allerede er skrevet.",
+          "streamingOnly": "Kun streamingmodeller skriver, mens du taler. Med alle andre modeller fungerer dette som den normale transskriptionsgenvej."
+        }
       },
       "typingTool": {
         "title": "Skriveværktøj",

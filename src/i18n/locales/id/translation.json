@@ -471,7 +471,8 @@
         "output": "Keluaran",
         "transcription": "Transkripsi",
         "history": "Riwayat",
-        "experimental": "Eksperimental"
+        "experimental": "Eksperimental",
+        "livePaste": "Tempel Langsung"
       },
       "experimentalToggle": {
         "label": "Fitur Eksperimental",
@@ -537,6 +538,17 @@
           "externalScript": "Skrip Eksternal"
         },
         "externalScriptPlaceholder": "/path/to/your/script.sh"
+      },
+      "livePaste": {
+        "notice": {
+          "title": "Pintasan ini mengetik setiap kata saat Anda mengucapkannya. Catatan:",
+          "pasteClipboard": "Kata yang di-stream diketik langsung, mengabaikan Metode Tempel Anda, karena menulis ke papan klip untuk setiap kata akan menghapus apa yang telah Anda salin. Hanya kata terakhir yang menggunakan Metode Tempel Anda.",
+          "pasteExternalScript": "Kata yang di-stream diketik langsung, bukan melalui skrip eksternal Anda. Hanya kata terakhir yang menjalankan skrip.",
+          "pasteNone": "Metode Tempel adalah Tidak Ada, jadi tidak ada yang diketik di mana pun. Pintasan ini tidak berpengaruh sampai Anda memilih Metode Tempel lain.",
+          "lastWord": "Kata terakhir muncul saat Anda melepas pintasan, bukan saat Anda berbicara — model belum menetapkannya.",
+          "cancel": "Membatalkan tidak lagi menghapus kata-kata yang sudah diketik.",
+          "streamingOnly": "Hanya model streaming yang mengetik saat Anda berbicara. Dengan model lain, ini berperilaku seperti pintasan Transkripsi biasa."
+        }
       },
       "typingTool": {
         "title": "Alat Pengetikan",
