@@ -298,6 +298,7 @@ a transcribe.cpp bump.
   different shortcut, and it's never live. `remaining_after_live` still detects a
   mismatch defensively and leaves the live text standing rather than pasting a
   duplicate.
+- **The transcription hook** (`hooks/transcription`, new in v0.10.0) only sees the final text, so words already typed live never pass through it. If the hook changes them, `remaining_after_live` sees the mismatch and leaves the live text as typed, the same way it handles post-processing.
 
 Push-to-talk _is_ fine, despite the obvious worry: enigo's macOS `fast_text`
 posts the literal Unicode string with `CGEventFlagNull`, explicitly ignoring held
