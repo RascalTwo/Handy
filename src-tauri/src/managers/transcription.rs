@@ -2251,6 +2251,7 @@ mod tests {
             false,
             &OutputLanguageEvidence::ModelDetected("en".to_string()),
             &languages(&["zh", "en", "ja"]),
+            true,
         );
 
         assert_eq!(
