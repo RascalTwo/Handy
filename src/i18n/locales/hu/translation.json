@@ -471,7 +471,8 @@
         "output": "Kimenet",
         "transcription": "Átírás",
         "history": "Előzmények",
-        "experimental": "Kísérleti"
+        "experimental": "Kísérleti",
+        "livePaste": "Élő beillesztés"
       },
       "experimentalToggle": {
         "label": "Kísérleti funkciók",
@@ -537,6 +538,17 @@
           "externalScript": "Külső szkript"
         },
         "externalScriptPlaceholder": "/path/to/your/script.sh"
+      },
+      "livePaste": {
+        "notice": {
+          "title": "Ez a billentyűparancs minden szót begépel, ahogy kimondod. Megjegyzések:",
+          "pasteClipboard": "A folyamatosan érkező szavak közvetlenül gépelődnek be, a Beillesztés módja beállítást figyelmen kívül hagyva, mert a vágólap szavankénti felülírása törölné, amit korábban kimásoltál. Csak az utolsó szó használja a Beillesztés módja beállítást.",
+          "pasteExternalScript": "A folyamatosan érkező szavak közvetlenül gépelődnek be, nem a külső szkripteden keresztül. Csak az utolsó szó futtatja a szkriptet.",
+          "pasteNone": "A Beillesztés módja Nincs, ezért sehová nem kerül szöveg. Ennek a billentyűparancsnak nincs hatása, amíg másik módot nem választasz.",
+          "lastWord": "Az utolsó szó a billentyűparancs elengedésekor érkezik, nem beszéd közben – a modell addig még nem véglegesítette.",
+          "cancel": "A megszakítás már nem törli a begépelt szavakat.",
+          "streamingOnly": "Csak a streamelő modellek gépelnek beszéd közben. Bármely más modellel ez úgy működik, mint a szokásos Átírás billentyűparancsa."
+        }
       },
       "typingTool": {
         "title": "Gépelőeszköz",
